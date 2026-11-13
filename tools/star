@@ -38,7 +38,9 @@ bump_release() {
   requested=$1
   current=$(current_release)
   [ "$requested" = "$current" ] && return 1
-  python3 - "${current#v}" "${requested#v}" <<'EOF'
+  # Called from an `if`, where the shell ignores errexit: stop here explicitly, or a
+  # refused version would carry on and report success.
+  python3 - "${current#v}" "${requested#v}" <<'EOF' || exit 1
 import re, sys
 from pathlib import Path
 old, new = sys.argv[1], sys.argv[2]
