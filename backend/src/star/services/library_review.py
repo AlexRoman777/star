@@ -298,8 +298,15 @@ def record_review_result(
     note.summary = str(value.get("summary") or "")
     findings = value.get("findings")
     proposals = value.get("proposals")
-    note.findings = list(findings) if isinstance(findings, list) else []
-    note.proposals = list(proposals) if isinstance(proposals, list) else []
+    # Keep only objects. A stray string or number here used to break the notes page.
+    note.findings = (
+        [item for item in findings if isinstance(item, dict)] if isinstance(findings, list) else []
+    )
+    note.proposals = (
+        [item for item in proposals if isinstance(item, dict)]
+        if isinstance(proposals, list)
+        else []
+    )
     note.completed_at = utc_now()
 
 

@@ -48,7 +48,7 @@ from star.services.highlight_league import record_highlight_comparison
 from star.services.library_review import record_review_result
 from star.services.operations import OperationRecord, append_operation_event
 from star.services.similarity_series import record_series_selection
-from star.services.source_media import record_permanent_source_failure
+from star.services.source_media import record_permanent_source_failure, task_source_asset_ids
 from star.services.task_recovery import (
     RECOVERABLE_BUDGET_TASK_TYPES,
     RECOVERABLE_MODEL_TASK_TYPES,
@@ -271,11 +271,25 @@ async def complete_library_review_task(
         result_digest=result_digest,
         allow_cancel_requested=True,
     )
+    # The lease proves the worker holds this task. It must also be the library
+    # review task, and the note must be the one that task was created for.
+    if task.task_type != "library.review" or str(payload.note_id) != str(
+        task.target_ref.get("note_id")
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="this task does not own that library review note",
+        )
     note = await session.get(LibraryReviewNote, payload.note_id)
     if note is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="library review note no longer exists",
+        )
+    if note.state == "complete":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="this library review note is already complete",
         )
     record_review_result(note, payload.value, model_key=payload.model_key)
     task.state = TaskState.SUCCEEDED
@@ -502,7 +516,13 @@ async def fail_task(
         retry_delay_seconds = return_after_transient_runtime_failure(task)
     else:
         task.state = TaskState.FAILED
-    if task.task_type == "group.highlight_compare" and payload.source_asset_id is not None:
+    if (
+        task.task_type == "group.highlight_compare"
+        and payload.source_asset_id is not None
+        # A worker may only report a photograph its own task names. Without this
+        # a worker could retire any photograph from the comparison rounds.
+        and payload.source_asset_id in task_source_asset_ids(task)
+    ):
         # A comparison round that could not load one of its photographs can
         # never succeed with the same photograph in it, whatever Immich's
         # reason was. Counting the failure here is what retires the entry

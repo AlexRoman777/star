@@ -22,9 +22,14 @@ Not supported: AMD and Intel GPUs, Intel Macs, and Windows as a worker. The mode
 drives (Ollama with CUDA, and MLX) do not cover them.
 
 **The smallest setup is one machine**: a Linux PC with an NVIDIA GPU can run the coordinator
-and an NVIDIA worker side by side. The maintainer has not tested this layout. If you try it,
-add your Docker bridge network (usually `172.16.0.0/12`) to `STAR_WORKER_AUTO_ENROLL_CIDRS`,
-because the worker reaches the coordinator from a container address.
+and an NVIDIA worker side by side. The maintainer has not tested this layout.
+
+**Check what address the coordinator sees.** Workers may enrol only from the networks in
+`STAR_WORKER_AUTO_ENROLL_CIDRS`, and that check uses the address the web container sees. On
+Docker Desktop, rootless Docker and some NAS systems, every client appears as the Docker gateway
+address. Do not add a Docker network range such as `172.16.0.0/12` to the list to work around
+this: it would let every device that can reach the port enrol. Use host networking for the web
+container, or enrol the worker once from the coordinator itself.
 
 ## What each worker does
 
@@ -84,6 +89,9 @@ In `.env`, set `STAR_LAN_ADDRESS` to this machine's address, set
 `STAR_WORKER_AUTO_ENROLL_CIDRS` to your own network, and generate every secret. The example
 file says how. Without `STAR_LAN_ADDRESS` the web UI listens on `127.0.0.1` only.
 
+Star answers only to the address in `STAR_LAN_ADDRESS`. If you reach it by a name such as
+`star.lan`, list that name in `STAR_EXTRA_ALLOWED_HOSTS`, or the API refuses the request.
+
 Create the data directories once, with the ownership the containers expect:
 
 ```sh
@@ -119,7 +127,10 @@ Check the memory limits in `.env` (`STAR_OLLAMA_MEMORY_LIMIT` and its reservatio
 values assume a host with plenty of RAM; lower them to fit yours.
 
 The worker enrols itself if it connects from a network listed in
-`STAR_WORKER_AUTO_ENROLL_CIDRS`. It appears on the Machines page within a minute.
+`STAR_WORKER_AUTO_ENROLL_CIDRS`. It appears on the Machines page within a minute, **paused**.
+
+**Press Resume to accept it.** A device that enrols for the first time receives no work, and so
+no photos, until you resume it. If a machine you do not recognise appears there, remove it.
 
 **Advanced review on an NVIDIA worker is optional and experimental.** It uses a compressed 27B
 model served by a third-party llama.cpp fork that you build yourself. It sits behind a Compose

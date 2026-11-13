@@ -35,7 +35,8 @@ x-star-environment: &star-environment
   STAR_LOG_LEVEL: INFO
   STAR_COORDINATOR_NAME: ${STAR_COORDINATOR_NAME:-star-coordinator}
   STAR_COORDINATOR_ROLE: nas-coordinator
-  STAR_ALLOWED_HOSTS: ${STAR_LAN_ADDRESS:-127.0.0.1},localhost,127.0.0.1,api
+  # Every name or address people type to reach Star. Requests for any other host are refused.
+  STAR_ALLOWED_HOSTS: ${STAR_LAN_ADDRESS:-127.0.0.1},localhost,127.0.0.1,api${STAR_EXTRA_ALLOWED_HOSTS:+,${STAR_EXTRA_ALLOWED_HOSTS}}
   STAR_CORS_ORIGINS: http://${STAR_LAN_ADDRESS:-127.0.0.1}:3822
   STAR_DATABASE_HOST: postgres
   STAR_DATABASE_PORT: 5432
@@ -64,6 +65,8 @@ x-star-environment: &star-environment
   STAR_WORKER_AUTO_ENROLL_ENABLED: true
   STAR_WORKER_AUTO_ENROLL_REQUIRE_EDGE: true
   STAR_WORKER_AUTO_ENROLL_CIDRS: ${STAR_WORKER_AUTO_ENROLL_CIDRS:-127.0.0.1/32}
+  # A device that enrols for the first time waits, paused, until the owner resumes it.
+  STAR_WORKER_AUTO_ENROLL_START_PAUSED: ${STAR_WORKER_AUTO_ENROLL_START_PAUSED:-true}
   STAR_WORKER_AUTO_ENROLL_CAPABILITIES: apple-silicon,cpu-light,cuda,ffmpeg,large-vlm,metadata,medium-vlm,mlx,multi-image-review,semantic-embedding,small-vlm
   STAR_LOCAL_PASSWORD_SETUP_ENABLED: true
   STAR_LIBRARY_PROGRAM_ENABLE_ALLOWED: true

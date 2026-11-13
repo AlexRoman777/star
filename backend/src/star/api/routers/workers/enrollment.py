@@ -159,6 +159,7 @@ async def automatically_enroll_worker(
             runtime_status=_runtime_status(payload.heartbeat),
             allowed_capabilities=sorted(requested_capabilities),
             state="active",
+            desired_state="paused" if settings.worker_auto_enroll_start_paused else "active",
             credential_rotated_at=now,
         )
         session.add(worker)
