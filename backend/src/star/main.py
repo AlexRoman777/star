@@ -98,7 +98,7 @@ def _is_routine_worker_poll(
     route_path = route_path.removeprefix("/api/v1")
     if route_path == "/workers/tasks/lease":
         # Successful leases remain visible. Healthy 204 idleness is already counted
-        # already and should not dominate NAS JSON logs.
+        # already and should not dominate coordinator JSON logs.
         return status_code == 204
     return route_path in {
         "/workers/heartbeat",

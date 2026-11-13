@@ -25,7 +25,7 @@ The first public release.
 ### What was not verified
 
 - **Version numbers restart here.** Before publication the project counted builds, up to
-  `v272`; `docs/DECISIONS.md` still refers to those.
+  `v272`.
 - **No worker has been run against this public code yet.** The maintainer's own installation
   runs the private predecessor, which uses different names for the worker families. Expect to
   report problems on a first install.

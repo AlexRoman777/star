@@ -15,8 +15,8 @@ describe("SystemPage", () => {
   it("shows coordinator, services, and intermittent worker state", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       generated_at: "2026-07-18T09:00:00Z",
-      coordinator_name: "star-nas",
-      coordinator_role: "nas-coordinator",
+      coordinator_name: "star-coordinator",
+      coordinator_role: "coordinator",
       environment: "production",
       software_version: "0.1.0",
       release_version: "v53",
@@ -24,7 +24,7 @@ describe("SystemPage", () => {
         { key: "scheduler", label: "Scheduler", category: "control-plane", status: "online", description: "Creates work.", optional: false, last_heartbeat: "2026-07-18T09:00:00Z", heartbeat_age_seconds: 1, details: {} },
       ],
       machines: [
-        { id: "coordinator", hostname_label: "star-nas", role: "nas-coordinator", status: "online", architecture: "container-host", operating_system: "Docker host", software_version: "0.1.0", release_version: "v53", expected_release_version: "v53", update_available: false, last_heartbeat: "2026-07-18T09:00:00Z", heartbeat_age_seconds: 0, capabilities: { orchestrator: true }, runtime_status: {} },
+        { id: "coordinator", hostname_label: "star-coordinator", role: "coordinator", status: "online", architecture: "container-host", operating_system: "Docker host", software_version: "0.1.0", release_version: "v53", expected_release_version: "v53", update_available: false, last_heartbeat: "2026-07-18T09:00:00Z", heartbeat_age_seconds: 0, capabilities: { orchestrator: true }, runtime_status: {} },
         { id: "worker-1", hostname_label: "home-mac", role: "compute-worker", status: "offline", architecture: "arm64", operating_system: "macOS", software_version: "0.1.0", release_version: "v51", expected_release_version: "v53", update_available: true, last_heartbeat: "2026-07-18T08:00:00Z", heartbeat_age_seconds: 3600, capabilities: { mlx: true }, runtime_status: { power_state: "battery" } },
       ],
       queue: { task_counts: { queued: 3 }, queued_by_route: { "medium-vlm": 3 }, active_leases: 0, failed_last_five_minutes: 0, oldest_queued_seconds: 120 },
@@ -44,7 +44,7 @@ describe("SystemPage", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findAllByText("star-nas")).not.toHaveLength(0);
+    expect(await screen.findAllByText("star-coordinator")).not.toHaveLength(0);
     expect(screen.getByText("home-mac")).toBeInTheDocument();
     expect(screen.getAllByText("offline")).not.toHaveLength(0);
     expect(screen.getByText("Update to v53")).toBeInTheDocument();
@@ -54,8 +54,8 @@ describe("SystemPage", () => {
   it("shows the managed storage inventory on its dedicated page", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       generated_at: "2026-07-20T09:00:00Z",
-      coordinator_name: "star-nas",
-      coordinator_role: "nas-coordinator",
+      coordinator_name: "star-coordinator",
+      coordinator_role: "coordinator",
       environment: "production",
       software_version: "0.1.0",
       release_version: "v53",
@@ -104,7 +104,7 @@ describe("SystemPage", () => {
     expect(await screen.findByText("1% of safety cap")).toBeInTheDocument();
     expect(screen.queryByText("Photo cache · physical")).not.toBeInTheDocument();
     expect(screen.getByText((_, element) => (
-      element?.tagName === "P" && element.textContent?.includes("Recoverable normalized derivatives are cached on the NAS") === true
+      element?.tagName === "P" && element.textContent?.includes("Recoverable normalized derivatives are cached on the coordinator") === true
     ))).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "System map" })).toHaveAttribute("href", "/settings?section=health");
   });

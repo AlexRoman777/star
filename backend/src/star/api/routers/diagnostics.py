@@ -717,7 +717,7 @@ async def _build_diagnostics(
     if not scheduler_online and (program_state != LibraryProgramState.DISABLED or active_tasks > 0):
         diagnostic_status = "attention"
         summary = "Durable work exists but the scheduler heartbeat is offline."
-        next_action = "Inspect or restart the NAS scheduler service."
+        next_action = "Inspect or restart the coordinator scheduler service."
     elif failing_loops:
         diagnostic_status = "attention"
         summary = "Scheduler subsystems are retrying: " + ", ".join(sorted(failing_loops)) + "."

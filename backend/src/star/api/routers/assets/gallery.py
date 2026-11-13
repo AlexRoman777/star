@@ -530,7 +530,7 @@ async def list_gallery_assets(
             )
         )
     # Sort compact IDs first. Carrying the full JSON projections for every
-    # matching photo through the sort needlessly loads the NAS before LIMIT.
+    # matching photo through the sort needlessly loads the coordinator before LIMIT.
     page_candidates = (
         select(
             Asset.id.label("asset_id"),

@@ -149,7 +149,7 @@ export function TopologyMap({ system }: { system?: SystemOverview }) {
       </div>
       <div className="topology-map">
         <article className="topology-coordinator">
-          <span className="topology-icon">NAS</span>
+          <span className="topology-icon">Hub</span>
           <div>
             <small>{system?.coordinator_role ?? "coordinator"}</small>
             <strong>{system?.coordinator_name ?? "Star control plane"}</strong>
@@ -209,8 +209,8 @@ function ExtendedStorageMetrics({ storage }: { storage?: SystemStorage }) {
   return (
     <>
       <span><small>Managed total</small><strong>{optionalBytes(storage?.managed_bytes)}</strong></span>
-      <span><small>NAS volume used</small><strong>{optionalBytes(storage?.volume_used_bytes)}</strong></span>
-      <span><small>NAS volume free</small><strong>{optionalBytes(storage?.volume_free_bytes)}</strong></span>
+      <span><small>Coordinator volume used</small><strong>{optionalBytes(storage?.volume_used_bytes)}</strong></span>
+      <span><small>Coordinator volume free</small><strong>{optionalBytes(storage?.volume_free_bytes)}</strong></span>
     </>
   );
 }
@@ -219,7 +219,7 @@ function StorageDetails({ storage }: { storage?: SystemStorage }) {
   if (!storage) return <p className="input-help">Loading storage inventory…</p>;
   return (
     <p className="input-help">
-      Recoverable normalized derivatives are cached on the NAS. Runtime model weights stay on their worker machines · NAS volume {optionalBytes(storage.volume_total_bytes)} · safety cap {formatBytes(storage.hard_limit_bytes)}
+      Recoverable normalized derivatives are cached on the coordinator. Runtime model weights stay on their worker machines · coordinator volume {optionalBytes(storage.volume_total_bytes)} · safety cap {formatBytes(storage.hard_limit_bytes)}
     </p>
   );
 }

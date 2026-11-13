@@ -60,7 +60,7 @@ RULES: dict[str, FailureRule] = {
         "code",
         "attention",
         "The coordinator rejected a worker result",
-        "A worker submitted a result the NAS refused (contract, model registration or "
+        "A worker submitted a result the coordinator refused (contract, model registration or "
         "media provenance mismatch). Since v256 a missing preview is reported as a source "
         "failure instead, so this class is a code or deployment problem.",
         "Up to the task's attempt limit; a rejected senior registration is repaired by the "
@@ -129,10 +129,10 @@ RULES.update(
         "WorkerTaskContractError": FailureRule(
             "code",
             "attention",
-            "Worker and NAS disagreed on a task contract",
-            "A worker ran a task whose contract revision the NAS no longer accepts, usually "
-            "across a release.",
-            "Not retried until the worker runs the release the NAS expects.",
+            "Worker and coordinator disagreed on a task contract",
+            "A worker ran a task whose contract revision the coordinator no longer accepts, "
+            "usually across a release.",
+            "Not retried until the worker runs the release the coordinator expects.",
             "Deploy the workers for the current release; if it repeats on one release, the "
             "contract hash is wrong in code.",
             code_fix_likely=True,
@@ -140,11 +140,11 @@ RULES.update(
         "ControlPlaneHttpError": FailureRule(
             "runtime",
             "attention",
-            "The NAS did not answer a worker",
-            "A 5xx or network error between a worker and the NAS while a task ran.",
+            "The coordinator did not answer a worker",
+            "A 5xx or network error between a worker and the coordinator while a task ran.",
             "Retried up to the attempt limit with backoff.",
-            "Look at the NAS API health and the worker's network; a burst means the NAS was "
-            "restarting or overloaded.",
+            "Look at the coordinator API health and the worker's network; a burst means the "
+            "coordinator was restarting or overloaded.",
         ),
         "LeaseExpired": FailureRule(
             "runtime",

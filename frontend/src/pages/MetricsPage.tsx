@@ -200,7 +200,7 @@ function MetricsOverview({ pressure, workers, overview, machines }: {
   const onlineWorkers = workers?.filter((worker) => worker.online).length ?? 0;
   const knownTasks = Object.values(overview?.queue.task_counts ?? {}).reduce((sum, value) => sum + value, 0);
   return <section className="metrics-overview-grid">
-    <article className="metrics-overview-lead"><small>NAS control state</small><strong>{pressure?.state ?? "Loading"}</strong><span>{pressure?.reasons.length ? pressure.reasons.join(" · ") : "No active pressure signals"}</span><StatusPill value={pressure?.state ?? "loading"} /></article>
+    <article className="metrics-overview-lead"><small>Coordinator control state</small><strong>{pressure?.state ?? "Loading"}</strong><span>{pressure?.reasons.length ? pressure.reasons.join(" · ") : "No active pressure signals"}</span><StatusPill value={pressure?.state ?? "loading"} /></article>
     <article><small>Workers online</small><strong>{onlineWorkers} / {workers?.length ?? "—"}</strong><span>{machines.filter((machine) => machine.online).length} compute machines</span></article>
     <article><small>Active work</small><strong>{overview?.queue.active_leases ?? "—"}</strong><span>{knownTasks.toLocaleString()} tasks in known states</span></article>
     <article><small>Whole-device planning</small><strong>{power.lowWatts}–{power.highWatts} W</strong><span>{(power.lowWatts * 24 / 1000).toFixed(1)}–{(power.highWatts * 24 / 1000).toFixed(1)} kWh/day if this load persists</span></article>
@@ -208,18 +208,18 @@ function MetricsOverview({ pressure, workers, overview, machines }: {
   </section>;
 }
 
-function NasMetrics({ pressure }: { pressure?: ResourcePressure }) {
+function CoordinatorMetrics({ pressure }: { pressure?: ResourcePressure }) {
   const observedAt = pressure?.observed_at ?? pressure?.sampled_at;
-  return <section className="panel nas-metrics-panel">
-    <div className="panel-heading"><div><p className="eyebrow">Shared host</p><h2>NAS headroom</h2></div><StatusPill value={pressure?.state ?? "loading"} /></div>
-    <div className="nas-gauge-grid">
+  return <section className="panel coordinator-metrics-panel">
+    <div className="panel-heading"><div><p className="eyebrow">Shared host</p><h2>Coordinator headroom</h2></div><StatusPill value={pressure?.state ?? "loading"} /></div>
+    <div className="coordinator-gauge-grid">
       <Gauge label="CPU" value={pressure?.cpu_percent} detail="Host-visible 1-minute load" tone={pressureTone(pressure?.cpu_percent ?? 0)} />
       <Gauge label="Memory" value={pressure?.memory_percent} detail="Host-visible memory pressure" tone={pressureTone(pressure?.memory_percent ?? 0)} />
       <Gauge label="Swap" value={pressure?.swap_percent} detail="Occupancy; relevant with high memory" tone={pressureTone(pressure?.swap_percent ?? 0)} />
       <Gauge label="Admission" value={(pressure?.admission_factor ?? 0) * 100} detail="New metadata work allowed" tone={(pressure?.admission_factor ?? 1) < 0.5 ? "warning" : "normal"} />
     </div>
-    <dl className="metrics-fact-grid nas-facts">
-      <div><dt>Gauge scope</dt><dd>{pressure?.measurement_scope === "whole_nas_host" ? "Whole NAS" : "Unknown"}</dd></div>
+    <dl className="metrics-fact-grid coordinator-facts">
+      <div><dt>Gauge scope</dt><dd>{pressure?.measurement_scope === "whole_coordinator_host" ? "Whole coordinator host" : "Unknown"}</dd></div>
       <div><dt>Star caps</dt><dd>{pressure ? `${pressure.star_container_cpu_budget ?? "—"} CPU · ${pressure.star_container_memory_budget_bytes ? formatBytes(pressure.star_container_memory_budget_bytes) : "—"}` : "—"}</dd></div>
       <div><dt>Database wait</dt><dd>{latencyLabel(pressure?.database_wait_ms)}</dd></div><div><dt>Immich p95</dt><dd>{latencyLabel(pressure?.immich_p95_ms)}</dd></div>
       <div><dt>Event-loop lag</dt><dd>{latencyLabel(pressure?.event_loop_lag_ms)}</dd></div><div><dt>Preview slots</dt><dd>{pressure?.preview_concurrency ?? "—"}</dd></div>
@@ -259,7 +259,7 @@ export function MetricsPage() {
       <RunMetrics program={program.data} dashboard={dashboard.data} workers={workers.data ?? []} now={now} />
       <StageForecasts />
       <MetricsOverview pressure={pressure.data} workers={workers.data} overview={overview.data} machines={machines} />
-      <NasMetrics pressure={pressure.data} />
+      <CoordinatorMetrics pressure={pressure.data} />
 
       <section className="metrics-section-heading"><div><p className="eyebrow">Compute fleet</p><h2>Machines</h2><span>CPU/GPU load is grouped by physical machine; memory is the largest container-visible view reported by its worker identities.</span></div><Link to="/machines">Worker controls</Link></section>
       <div className="metrics-machine-grid">{machines.length ? machines.map((machine) => <MachineCard machine={machine} key={machine.key} />) : <div className="panel empty-state"><strong>No worker telemetry yet.</strong><span>Worker resource gauges appear after the next heartbeat.</span></div>}</div>
@@ -268,9 +268,9 @@ export function MetricsPage() {
 
       <section className="panel power-method-panel">
         <div className="panel-heading"><div><p className="eyebrow">Estimated, not measured</p><h2>Power planning method</h2></div><code>{POWER_ESTIMATE_VERSION}</code></div>
-        <p>The whole-device range uses broad generic idle-to-active envelopes for a NAS, an NVIDIA machine and a Mac, blended with reported CPU, GPU, and worker-slot utilization. It cannot isolate Star from Immich or other software.</p>
+        <p>The whole-device range uses broad generic idle-to-active envelopes for a coordinator host, an NVIDIA machine and a Mac, blended with reported CPU, GPU, and worker-slot utilization. It cannot isolate Star from Immich or other software.</p>
         <p>Displays, disks, charging, fans, PSU efficiency, sleep state, and hardware model can move real consumption outside this range. NVIDIA GPU board power is shown separately when the worker reports it; connect a UPS, smart plug, RAPL, or platform energy sensor before treating watts or kWh as measured.</p>
-        <details><summary>Planning envelopes</summary><dl className="metrics-fact-grid"><div><dt>NAS</dt><dd>12–25 W idle · 35–75 W active</dd></div><div><dt>NVIDIA</dt><dd>40–80 W idle · 180–360 W active</dd></div><div><dt>Apple</dt><dd>5–15 W idle · 30–110 W active</dd></div></dl></details>
+        <details><summary>Planning envelopes</summary><dl className="metrics-fact-grid"><div><dt>Coordinator</dt><dd>12–25 W idle · 35–75 W active</dd></div><div><dt>NVIDIA</dt><dd>40–80 W idle · 180–360 W active</dd></div><div><dt>Apple</dt><dd>5–15 W idle · 30–110 W active</dd></div></dl></details>
       </section>
     </>
   );

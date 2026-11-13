@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 usage() {
   echo "Usage: $0 DESTINATION [--include-images] [--lmstudio-dir PATH]" >&2
-  echo "DESTINATION should be a mounted NAS directory, for example /Volumes/Star/model-vault/2026-07-20." >&2
+  echo "DESTINATION should be a mounted backup directory, for example /Volumes/Star/model-vault/2026-07-20." >&2
 }
 
 [[ $# -ge 1 ]] || { usage; exit 2; }

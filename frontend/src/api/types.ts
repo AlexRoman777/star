@@ -487,7 +487,7 @@ export interface ResourcePressure {
   sampled_at?: string;
   observed_at?: string;
   control_sampled_at?: string;
-  measurement_scope?: "whole_nas_host";
+  measurement_scope?: "whole_coordinator_host";
   star_container_cpu_budget?: number;
   star_container_memory_budget_bytes?: number;
   history: PressureSample[];

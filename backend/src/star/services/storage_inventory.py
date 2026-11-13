@@ -591,7 +591,7 @@ async def reconcile_storage_inventory(
     )
     expected = await _expected_artifacts(session)
     # Filesystem walks can outlast PostgreSQL's 30-second idle-transaction
-    # guard on a NAS. Persist eviction and release the transaction before I/O.
+    # guard on a small coordinator host. Persist eviction and release the transaction before I/O.
     await session.commit()
     artifact_scan = await asyncio.to_thread(
         scan_artifact_filesystem,

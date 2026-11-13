@@ -125,7 +125,8 @@ TASK_LABELS = {
 # Plain-language meaning and the control that fixes it, per error class.
 FAILURE_GUIDANCE: dict[str, tuple[str, str, str]] = {
     "ControlPlanePayloadRejected": (
-        "The NAS rejected the worker's answer as not matching the task's model registration. "
+        "The coordinator rejected the worker's answer as not matching the task's model "
+        "registration. "
         "The current release corrects the registration; the stage can be retried.",
         "/work?view=queue",
         "Retry the failed stage",
@@ -156,7 +157,8 @@ FAILURE_GUIDANCE: dict[str, tuple[str, str, str]] = {
         "See excluded photos",
     ),
     "ControlPlaneHttpError": (
-        "A worker could not reach the NAS API for a moment. Retry the stage if it does not clear.",
+        "A worker could not reach the coordinator API for a moment. "
+        "Retry the stage if it does not clear.",
         "/work?view=queue",
         "Retry the failed stage",
     ),
@@ -252,7 +254,8 @@ def _system_alerts(
                 "storage-reserve",
                 "critical",
                 "Coordinator disk reserve reached",
-                "New cache writes and continuous analysis are paused before the NAS fills.",
+                "New cache writes and continuous analysis are paused before the "
+                "coordinator's disk fills.",
                 "/system",
                 "Inspect storage",
             )

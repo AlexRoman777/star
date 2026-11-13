@@ -2,7 +2,7 @@
 
 Ordering the pruning selects by id made PostgreSQL walk whole tables in id
 order hunting for the few matching rows (1.1 million buffers for 2,000
-cancelled tasks on a copy of the production database; two minutes on the NAS
+cancelled tasks on a copy of the production database; two minutes on the coordinator
 disk). The selects now order along an index, and the two that had none get
 one: pending proposals by creation time, and review runs without a
 generation by start time.

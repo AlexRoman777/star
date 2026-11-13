@@ -25,8 +25,8 @@
 .metrics-overview-lead { padding-right: 70px !important; }
 .metrics-overview-lead .status-pill { position: absolute; top: 14px; right: 14px; }
 .metrics-overview-grid .metric-measured { border-color: color-mix(in srgb, var(--success) 40%, var(--border)); }
-.nas-metrics-panel { margin-bottom: 18px; }
-.nas-gauge-grid, .machine-gauge-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+.coordinator-metrics-panel { margin-bottom: 18px; }
+.coordinator-gauge-grid, .machine-gauge-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
 .resource-gauge { display: grid; align-content: start; gap: 8px; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-subtle); }
 .resource-gauge > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .resource-gauge small { color: var(--text-muted); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
@@ -76,7 +76,7 @@
 .power-method-panel code { color: var(--text-muted); font-size: 9px; }
 .power-method-panel details { margin-top: 10px; }
 .power-method-panel summary { color: var(--accent); cursor: pointer; font-size: 10px; }
-@media (max-width: 1250px) { .run-metrics-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }.metrics-overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.nas-gauge-grid, .machine-gauge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1250px) { .run-metrics-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }.metrics-overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.coordinator-gauge-grid, .machine-gauge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 850px) { .metrics-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.metrics-lower-grid { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .run-machine-contributions, .collection-eta { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .run-metrics-summary, .metrics-overview-grid, .nas-gauge-grid, .machine-gauge-grid { grid-template-columns: 1fr; }.run-machine-contributions dl, .collection-eta dl { grid-template-columns: 1fr; }.metrics-queue-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }.metrics-refresh-state { width: 100%; }.metrics-worker-detail > div { grid-template-columns: 1fr; gap: 3px; } }
+@media (max-width: 560px) { .run-metrics-summary, .metrics-overview-grid, .coordinator-gauge-grid, .machine-gauge-grid { grid-template-columns: 1fr; }.run-machine-contributions dl, .collection-eta dl { grid-template-columns: 1fr; }.metrics-queue-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }.metrics-refresh-state { width: 100%; }.metrics-worker-detail > div { grid-template-columns: 1fr; gap: 3px; } }

@@ -216,7 +216,7 @@ function LiveProcessNarrative({ program, counts, workers, pressure }: {
         <div className="process-narrative-details">
           <span>{running.toLocaleString()} running · {queued.toLocaleString()} waiting</span>
           {program?.requested_asset_count !== null && program?.requested_asset_count !== undefined && <span>{program.admitted_asset_count.toLocaleString()} / {program.requested_asset_count.toLocaleString()} metadata ready</span>}
-          {pressure && <span>NAS CPU {Math.round(pressure.cpu_percent)}% · memory {Math.round(pressure.memory_percent)}% · admission {Math.round(pressure.admission_factor * 100)}%</span>}
+          {pressure && <span>Coordinator CPU {Math.round(pressure.cpu_percent)}% · memory {Math.round(pressure.memory_percent)}% · admission {Math.round(pressure.admission_factor * 100)}%</span>}
           <span>Coordinator always on</span>
         </div>
       </div>

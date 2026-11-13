@@ -17,14 +17,14 @@ from star.services.writeback import ALLOWED_WRITEBACK_OPERATIONS
 ROOT = Path(__file__).parents[3]
 
 
-def _nas_compose() -> dict[str, object]:
+def _coordinator_compose() -> dict[str, object]:
     path = ROOT / "Deployment/coordinator/compose.yaml"
     value = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(value, dict)
     return value
 
 
-_compose = _nas_compose
+_compose = _coordinator_compose
 
 
 def test_public_api_has_no_asset_delete_or_trash_route() -> None:
@@ -66,8 +66,8 @@ def test_immich_client_and_writer_allow_only_approved_metadata_writeback() -> No
     )
 
 
-def test_nas_writer_uses_the_same_stored_connection_credential() -> None:
-    compose = _nas_compose()
+def test_coordinator_writer_uses_the_same_stored_connection_credential() -> None:
+    compose = _coordinator_compose()
     services = compose["services"]
     assert isinstance(services, dict)
     api = services["api"]
@@ -85,11 +85,12 @@ def test_nas_writer_uses_the_same_stored_connection_credential() -> None:
     assert writer["cap_drop"] == ["ALL"]
 
 
-def test_standard_worker_capabilities_fit_the_nas_automatic_enrollment_policy() -> None:
+def test_standard_worker_capabilities_fit_the_automatic_enrollment_policy() -> None:
     """A rebuilt standard worker must never reject its own safe re-enrollment."""
 
-    nas = yaml.safe_load((ROOT / "Deployment/coordinator/compose.yaml").read_text(encoding="utf-8"))
-    allowed = set(nas["x-star-environment"]["STAR_WORKER_AUTO_ENROLL_CAPABILITIES"].split(","))
+    coordinator = _coordinator_compose()
+    environment = coordinator["x-star-environment"]
+    allowed = set(environment["STAR_WORKER_AUTO_ENROLL_CAPABILITIES"].split(","))
     for compose_path, service_names in {
         ROOT / "Deployment/worker-nvidia/compose.yaml": {"technical-worker", "gpu-worker"},
         ROOT / "Deployment/worker-apple/compose.yaml": {
@@ -107,7 +108,7 @@ def test_standard_worker_capabilities_fit_the_nas_automatic_enrollment_policy() 
             }
             assert advertised <= allowed, (
                 f"{compose_path.parent.name}/{service_name} advertises capabilities "
-                f"outside NAS automatic enrollment: {sorted(advertised - allowed)}"
+                f"outside coordinator automatic enrollment: {sorted(advertised - allowed)}"
             )
 
 
@@ -266,7 +267,7 @@ def test_curation_diagnostics_report_counts_and_never_content() -> None:
 def test_nightly_database_backup_is_verified_and_pruned() -> None:
     """One verified custom-format dump a night at 03:00 UTC, fourteen kept, restorable locally."""
 
-    services = _nas_compose()["services"]
+    services = _coordinator_compose()["services"]
     backup = services["database-backup"]
     assert backup["image"] == services["postgres"]["image"]
     assert "${STAR_DATA_DIR:-./star-data}/starml:/starml" in backup["volumes"]
@@ -278,14 +279,15 @@ def test_nightly_database_backup_is_verified_and_pruned() -> None:
 
 
 def test_workers_publish_no_ports_and_only_web_publishes_on_the_nas() -> None:
-    """The NAS web service is the only entry point; nothing else exposes a port."""
+    """The coordinator web service is the only entry point; nothing else exposes a port."""
 
     for machine in ("worker-nvidia", "worker-apple"):
         services = yaml.safe_load(
             (ROOT / f"Deployment/{machine}/compose.yaml").read_text(encoding="utf-8")
         )["services"]
         assert not any(service.get("ports") for service in services.values()), machine
-    nas = _nas_compose()
-    assert {name for name, service in nas["services"].items() if service.get("ports")} == {"web"}
-    assert nas["networks"]["data"]["internal"] is True
-    assert nas["services"]["postgres"]["networks"] == ["data"]
+    coordinator = _coordinator_compose()
+    services = coordinator["services"]
+    assert {name for name, service in services.items() if service.get("ports")} == {"web"}
+    assert coordinator["networks"]["data"]["internal"] is True
+    assert coordinator["services"]["postgres"]["networks"] == ["data"]
