@@ -39,6 +39,18 @@ trivy fs . --scanners vuln,misconfig --severity HIGH,CRITICAL --skip-dirs node_m
   data.
 - **Only the web container publishes a port.**
 
+## Known issues
+
+- **Migration drift.** `alembic check` reports 43 differences between the migrations and the
+  ORM models on a clean database, mostly check-constraint and index names. Every migration
+  applies and the database tests pass, so CI reports the drift without failing. A migration
+  that reconciles the names would be a welcome contribution.
+- **No screenshots.** The interface shows family photos, so there are none in the repository
+  yet. They will come from synthetic data.
+- **One tested layout.** The maintainer runs a coordinator, one NVIDIA worker and one Apple
+  worker on separate machines. Other layouts in `docs/SETUP.md` are expected to work and have
+  not been tested.
+
 ## Commits and pull requests
 
 - One logical change per pull request.
