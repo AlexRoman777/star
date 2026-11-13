@@ -19,7 +19,10 @@ what is a vulnerability and what is intended.
   internet. Reach it from outside through a VPN.
 - **Local accounts.** The web UI has password login with Argon2 hashes and server-side sessions.
 - **Workers connect outbound.** They publish no ports. A worker may enrol itself only from the
-  networks listed in `STAR_WORKER_AUTO_ENROLL_CIDRS`.
+  networks listed in `STAR_WORKER_AUTO_ENROLL_CIDRS`, and a device that enrols for the first time
+  stays paused, with no work and no photos, until the owner resumes it.
+- **The API answers only for known host names** (`STAR_ALLOWED_HOSTS`), which is the control
+  against DNS rebinding from a web page opened on the home network.
 - **Secrets stay in ignored `.env` files** or in encrypted application storage. The Immich key
   and the family roster are encrypted at rest.
 - **Models are sandboxed by design.** They receive pixels and a prompt, and return a structured
@@ -41,6 +44,19 @@ what is a vulnerability and what is intended.
 - Attacks by someone who already has administrator access to a machine running Star.
 - Vulnerabilities in Immich, Ollama, MLX or the models themselves. Report those upstream.
 - The quality of a model's rating. That is a product question, not a security one.
+
+## Known limitations
+
+These came out of a source audit in November 2026 and are not yet fixed.
+
+- **Workers are trusted with previews.** A worker prepares the downsized preview of a photo it
+  was given, and the coordinator reuses that preview for other workers and for the web UI.
+  Nothing ties those pixels to the original in Immich. Accept only machines you control.
+- **The marker for "this request came through the web container" is a fixed header value.**
+  The API container publishes no port, so a client cannot normally reach it to send that header
+  itself. This relies on the Docker host not forwarding traffic to unpublished container ports,
+  which current Docker Engine does not do by default. A per-installation secret is planned.
+- **There is no sign-out and no session list.** A session lasts 30 days.
 
 ## Supported versions
 

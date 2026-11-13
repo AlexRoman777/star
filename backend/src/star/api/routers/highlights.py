@@ -20,6 +20,7 @@ from star.services.library_program import get_or_create_library_program
 
 router = APIRouter(prefix="/highlights", tags=["highlights"])
 owner = require_roles(Role.ADMINISTRATOR)
+reader = require_roles(Role.ADMINISTRATOR, Role.CURATOR, Role.REVIEWER, Role.READ_ONLY)
 
 
 class HighlightBackfillRequest(ApiSchema):
@@ -29,6 +30,7 @@ class HighlightBackfillRequest(ApiSchema):
 
 @router.get("/overview")
 async def get_highlight_overview(
+    _principal: Principal = Depends(reader),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
     return await highlight_overview(session)

@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, VerifyMismatchError
 from argon2.low_level import Type
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from star.core.config import Settings
@@ -38,6 +38,8 @@ _PASSWORD_HASHER = PasswordHasher(
 )
 _DUMMY_PASSWORD_HASH = _PASSWORD_HASHER.hash("star-invalid-password-sentinel")
 _MAX_FAILED_PASSWORD_ATTEMPTS = 5
+# Any fixed number; it only has to be the same for every first-setup request.
+_SETUP_LOCK_KEY = 5_741_203
 _PASSWORD_LOCKOUT_MINUTES = 15
 
 
@@ -97,6 +99,11 @@ async def bootstrap_password_setup(
     display_name: str | None,
     password: str,
 ) -> AuthResult:
+    # Two first-setup requests in the same instant would both see an empty table and
+    # both create an administrator. PostgreSQL serialises them here; SQLite, used
+    # only by the unit tests, has one writer anyway.
+    if session.get_bind().dialect.name == "postgresql":
+        await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": _SETUP_LOCK_KEY})
     user = await session.scalar(select(User).where(User.username == username).with_for_update())
     users_exist = await has_users(session)
     if user is None and not users_exist:
@@ -140,6 +147,11 @@ async def password_login(
     if user.password_locked_until is not None and not _is_expired(user.password_locked_until):
         await _consume_invalid_password_work(password)
         raise ValueError("invalid username or password")
+    if user.password_locked_until is not None:
+        # The lock has run out. Start counting again, or a single wrong attempt
+        # every fifteen minutes would keep the account locked for ever.
+        user.failed_password_attempts = 0
+        user.password_locked_until = None
     if user.password_hash is None:
         await _consume_invalid_password_work(password)
         raise ValueError("invalid username or password")
