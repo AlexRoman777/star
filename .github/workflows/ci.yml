@@ -71,20 +71,19 @@ jobs:
       postgres:
         image: pgvector/pgvector:0.8.6-pg18-trixie@sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff
         env:
-          POSTGRES_DB: star_test
+          POSTGRES_DB: star
           POSTGRES_USER: star
           POSTGRES_PASSWORD: test-only
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U star -d star_test"
+          --health-cmd "pg_isready -U star -d star"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
       STAR_DATABASE_HOST: 127.0.0.1
-      # The runtime tests refuse any database that is not the disposable star_test.
-      STAR_DATABASE_NAME: star_test
+      STAR_DATABASE_NAME: star
       STAR_DATABASE_USER: star
       STAR_DATABASE_PASSWORD: test-only
     steps:
@@ -110,8 +109,7 @@ jobs:
         # this step reports and does not block.
         continue-on-error: true
         run: uv run alembic check
-      - name: Exercise PostgreSQL lease and result concurrency
-        env:
-          STAR_POSTGRES_TEST_URL: postgresql+asyncpg://star:test-only@127.0.0.1:5432/star_test
-        run: uv run pytest -q backend/tests/postgres
-
+      - name: Run the PostgreSQL suite on a disposable database
+        # The script starts its own throwaway PostgreSQL, checks the fresh-install and the
+        # upgrade path, and runs the runtime tests against the star_test database they require.
+        run: ./scripts/test-postgres.sh
