@@ -107,6 +107,7 @@ exposed to the internet.
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | The maintainer's day-to-day runbook: release, deploy, recover |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Why things are the way they are, one line per decision |
 | [AGENTS.md](AGENTS.md) | The project's rules, written for the coding agents that helped build it |
+| [CHANGELOG.md](CHANGELOG.md) | What each release contains, and what was verified |
 
 ## Built with
 
