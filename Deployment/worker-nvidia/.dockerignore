@@ -1,0 +1,10 @@
+*
+!Dockerfile
+!Dockerfile.embedding
+!Dockerfile.ollama
+!EmbeddingRuntime
+!EmbeddingRuntime/app.py
+!requirements.lock
+!ollama-entrypoint.sh
+!Package
+!Package/*.whl

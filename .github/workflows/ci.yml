@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.11.28"
+          enable-cache: true
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          package_json_file: frontend/package.json
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.18.0"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install locked Python dependencies
+        run: uv sync --frozen --all-groups
+      - name: Backend lint, types, and tests
+        run: |
+          uv run ruff check backend
+          uv run mypy backend/src
+          uv run pytest
+          uv run python scripts/generate_openapi_contract.py --check
+      - name: Install locked frontend dependencies
+        run: pnpm --dir frontend install --frozen-lockfile
+      - name: Frontend lint, tests, and build
+        run: |
+          pnpm --dir frontend run lint
+          pnpm --dir frontend run test
+          pnpm --dir frontend run build
+      - name: Validate the three compose files
+        run: |
+          for machine in coordinator worker-nvidia worker-apple; do
+            # Each compose file reads the ignored .env next to it; a fresh checkout has only the example.
+            cp -n "Deployment/$machine/.env.example" "Deployment/$machine/.env"
+            docker compose --env-file "Deployment/$machine/.env.example" -f "Deployment/$machine/compose.yaml" config --quiet
+            rm "Deployment/$machine/.env"
+          done
+          git diff --check
+
+  migration-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg18-trixie@sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff
+        env:
+          POSTGRES_DB: star
+          POSTGRES_USER: star
+          POSTGRES_PASSWORD: test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U star -d star"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      STAR_DATABASE_HOST: 127.0.0.1
+      STAR_DATABASE_NAME: star
+      STAR_DATABASE_USER: star
+      STAR_DATABASE_PASSWORD: test-only
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.11.28"
+          enable-cache: true
+      - name: Upgrade a clean PostgreSQL database to Alembic head
+        run: uv run alembic upgrade head
+      - name: Verify the database is exactly at head
+        run: uv run alembic current --check-heads
+      - name: Verify migrations match current ORM metadata
+        run: uv run alembic check
+      - name: Exercise PostgreSQL lease and result concurrency
+        env:
+          STAR_POSTGRES_TEST_URL: postgresql+asyncpg://star:test-only@127.0.0.1:5432/star
+        run: uv run pytest -q backend/tests/postgres
+

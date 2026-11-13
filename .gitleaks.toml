@@ -1,0 +1,33 @@
+# gitleaks configuration for Star.
+#
+# Run it yourself before opening a pull request:
+#   gitleaks detect --source . --config .gitleaks.toml --redact
+#
+# Star holds an Immich API key, worker tokens, an encryption key and session secrets. None of
+# them belong in this repository: they live in ignored .env files and in encrypted application
+# storage. This config exists so that a real one can never be committed quietly.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "immich-api-key"
+description = "Immich API key"
+regex = '''(?i)(immich[_-]?api[_-]?key|IMMICH_API_KEY)["'\s]*[:=]["'\s]*[A-Za-z0-9._\-]{20,}'''
+tags = ["key", "immich"]
+
+[allowlist]
+description = "Placeholders and generated files"
+paths = [
+  '''uv\.lock''',
+  '''frontend/pnpm-lock\.yaml''',
+  '''backend/tests/fixtures/immich-v.*-openapi\.json''',
+  '''frontend/src/api/generated/.*''',
+]
+regexTarget = "line"
+regexes = [
+  '''CHANGE_ME[A-Z0-9_]*''',
+  '''(?i)(test|synthetic|example|dummy|fake)[-_ ]?(only|token|key|secret|password)''',
+  # "model_key" is the name of a model, such as "gemma3:12b", not a credential.
+  '''(?i)model_key\s*[:=]''',
+]

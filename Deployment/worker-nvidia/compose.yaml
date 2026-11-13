@@ -1,0 +1,331 @@
+# Compatibility identity: preserves the enrolled worker volumes during the Star rename.
+name: star-nvidia-worker
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-build-provenance: &build-provenance
+  STAR_RELEASE_VERSION: ${STAR_RELEASE_VERSION:-unversioned}
+  STAR_BUILD_GIT_SHA: ${STAR_BUILD_GIT_SHA:-unknown}
+
+services:
+  technical-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args: *build-provenance
+    command:
+      - run
+      - --server
+      - ${STAR_CONTROL_PLANE_URL:-http://192.168.0.10:3822}
+      - --hostname
+      - ${STAR_WORKER_HOSTNAME:-nvidia-technical}
+      - --machine-group
+      - nvidia-main
+      - --capabilities
+      - cpu-light,semantic-embedding
+      - --worker-token-file
+      - /var/lib/star-worker/credential
+      - --identity-file
+      - /var/lib/star-worker/device-identity
+      - --technical-concurrency
+      - ${STAR_TECHNICAL_CONCURRENCY:-4}
+    environment:
+      STAR_WORKER_RELEASE_VERSION: v272
+      STAR_ENVIRONMENT: production
+      STAR_SEMANTIC_EMBEDDING_URL: http://embedding-runtime:8095
+      STAR_EMBEDDING_TOKEN: ${STAR_EMBEDDING_TOKEN:-}
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+    restart: always
+    init: true
+    stop_grace_period: 45s
+    volumes:
+      - type: volume
+        source: worker_state
+        target: /var/lib/star-worker
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    pids_limit: 512
+    mem_limit: ${STAR_TECHNICAL_MEMORY_LIMIT:-24g}
+    mem_reservation: ${STAR_TECHNICAL_MEMORY_RESERVATION:-8g}
+    cpus: ${STAR_TECHNICAL_CPU_LIMIT:-3.5}
+    depends_on:
+      embedding-runtime:
+        condition: service_healthy
+    logging: *default-logging
+
+  embedding-runtime:
+    build:
+      context: .
+      dockerfile: Dockerfile.embedding
+      args: *build-provenance
+    restart: always
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    pids_limit: 256
+    mem_limit: ${STAR_EMBEDDING_MEMORY_LIMIT:-4g}
+    cpus: ${STAR_EMBEDDING_CPU_LIMIT:-2.0}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8095/healthz', timeout=3).read()
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 45s
+    environment:
+      STAR_EMBEDDING_TOKEN: ${STAR_EMBEDDING_TOKEN:-}
+      CUDA_VISIBLE_DEVICES: ""
+    logging: *default-logging
+
+  gpu-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args: *build-provenance
+    command:
+      - run
+      - --server
+      - ${STAR_CONTROL_PLANE_URL:-http://192.168.0.10:3822}
+      - --hostname
+      - ${STAR_REVIEW_WORKER_HOSTNAME:-nvidia-photo-review}
+      - --machine-group
+      - nvidia-main
+      - --capabilities
+      - small-vlm,medium-vlm
+      - --worker-token-file
+      - /var/lib/star-worker/credential
+      - --identity-file
+      - /var/lib/star-worker/device-identity
+      - --model-concurrency
+      - "1"
+      - --model-key-csv
+      - ${STAR_OLLAMA_MODEL_KEYS:-ministral-3:8b-instruct-2512-q4_K_M},${STAR_NVIDIA_SENIOR_MODEL_KEY:-qwen3.8:27b}
+      - --model-key
+      - ${STAR_OLLAMA_HIGHLIGHT_MODEL:-qwen3-vl:8b-instruct-q4_K_M}
+      - --ollama-url
+      - http://ollama:11434
+      - --ollama-allowed-host
+      - ollama
+      # The senior (Advanced) review model on the NVIDIA worker: Ternary Bonsai 2 27B,
+      # a 5.95 GB compression of Qwen3.8-27B served by PrismML's llama.cpp fork.
+      # It answers under the senior model key so the coordinator's Advanced
+      # tasks lease here as on the Apple worker; provenance records the runtime.
+      # The server sleeps 15 s after its last request so Ministral can have
+      # the 8 GB back; the agent waits for that before switching.
+      - --adviser-model-key
+      - ${STAR_NVIDIA_SENIOR_MODEL_KEY:-qwen3.8:27b}
+      - --adviser-model-url
+      - http://bonsai-runtime:8090
+      - --adviser-model-allowed-host
+      - bonsai-runtime
+      - --adviser-model-runtime-alias
+      - bonsai-2-27b
+      - --adviser-model-runtime-name
+      - llama.cpp-prism
+      - --adviser-model-artifact-checksum
+      - ${STAR_BONSAI_ARTIFACT_CHECKSUM:-}
+      - --adviser-model-sleep-idle-seconds
+      - "15"
+      - --model-keep-alive
+      - ${STAR_OLLAMA_KEEP_ALIVE:-30m}
+      - --model-idle-ttl-seconds
+      - ${STAR_OLLAMA_MODEL_IDLE_TTL_SECONDS:-30}
+      - --require-full-accelerator-residency
+      - --quiet-hours-start
+      - ${STAR_NVIDIA_QUIET_START:-22:00}
+      - --quiet-hours-end
+      - ${STAR_NVIDIA_QUIET_END:-07:00}
+      - --quiet-hours-timezone
+      - ${STAR_NVIDIA_QUIET_TIMEZONE:-Europe/Stockholm}
+      - --quiet-hours-cooldown-seconds
+      - ${STAR_NVIDIA_QUIET_COOLDOWN_SECONDS:-0}
+      - --quiet-hours-performance-percent
+      - ${STAR_NVIDIA_QUIET_PERFORMANCE_PERCENT:-100}
+    environment:
+      STAR_WORKER_RELEASE_VERSION: v272
+      STAR_ENVIRONMENT: production
+      STAR_HIGHLIGHT_CONTEXT_TOKENS: "4096"
+      STAR_HIGHLIGHT_CONTACT_SHEET_EDGE: "1344"
+    depends_on:
+      ollama:
+        condition: service_healthy
+      # Only when the "advanced-review" profile is active (see .env.example).
+      bonsai-runtime:
+        condition: service_healthy
+        required: false
+    restart: always
+    init: true
+    stop_grace_period: 60s
+    volumes:
+      - type: volume
+        source: review_worker_state
+        target: /var/lib/star-worker
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    pids_limit: 256
+    mem_limit: ${STAR_REVIEW_WORKER_MEMORY_LIMIT:-24g}
+    mem_reservation: ${STAR_REVIEW_WORKER_MEMORY_RESERVATION:-8g}
+    cpus: ${STAR_REVIEW_WORKER_CPU_LIMIT:-3.0}
+    logging: *default-logging
+
+  bonsai-runtime:
+    # Optional. It starts only with the "advanced-review" profile:
+    #   COMPOSE_PROFILES=advanced-review docker compose up -d
+    # Without it this machine does primary reviews only, which is the normal case.
+    profiles: [advanced-review]
+    # PrismML's llama.cpp fork (branch "prism", built for compute capability
+    # 7.5) serving Ternary Bonsai 2 27B with its vision projector. The binary,
+    # its libraries and the two model files live under STAR_BONSAI_DIR on the
+    # host (built once; see docs/OPERATIONS.md).
+    # The CUDA *runtime* image ships no libgomp, so the build copies
+    # libgomp.so.1 beside llama-server, where LD_LIBRARY_PATH points. The
+    # model sleeps after 15 idle seconds so the GPU is shared with Ollama by
+    # turns, never at once.
+    image: nvidia/cuda:12.4.1-runtime-ubuntu22.04
+    pull_policy: if_not_present
+    working_dir: /work/llama.cpp/build/bin
+    command:
+      - ./llama-server
+      - -m
+      - /work/Ternary-Bonsai-2-27B-PTQ1_0.gguf
+      - --mmproj
+      - /work/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf
+      - --alias
+      - bonsai-2-27b
+      - -ngl
+      - "99"
+      - -fa
+      - "on"
+      - -c
+      - ${STAR_BONSAI_CONTEXT_TOKENS:-6144}
+      - --jinja
+      - --temp
+      - "0.7"
+      - --top-p
+      - "0.8"
+      - --top-k
+      - "20"
+      - --sleep-idle-seconds
+      - "15"
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8090"
+    environment:
+      LD_LIBRARY_PATH: /work/llama.cpp/build/bin
+    restart: always
+    init: true
+    stop_grace_period: 30s
+    volumes:
+      - type: bind
+        source: ${STAR_BONSAI_DIR:-/opt/star/bonsai}
+        target: /work
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    pids_limit: 256
+    mem_limit: ${STAR_BONSAI_MEMORY_LIMIT:-16g}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8090 && printf 'GET /health HTTP/1.0\r\n\r\n' >&3 && head -c 200 <&3 | grep -q 'HTTP/1.'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    logging: *default-logging
+
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+      args: *build-provenance
+    restart: always
+    init: true
+    stop_grace_period: 60s
+    environment:
+      STAR_OLLAMA_MODELS: ${STAR_OLLAMA_MODEL_KEYS:-ministral-3:8b-instruct-2512-q4_K_M},${STAR_OLLAMA_HIGHLIGHT_MODEL:-qwen3-vl:8b-instruct-q4_K_M}
+      OLLAMA_CONTEXT_LENGTH: ${STAR_OLLAMA_CONTEXT_LENGTH:-4096}
+      OLLAMA_NO_CLOUD: "1"
+      OLLAMA_KEEP_ALIVE: ${STAR_OLLAMA_KEEP_ALIVE:-30m}
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_QUEUE: ${STAR_OLLAMA_MAX_QUEUE:-16}
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: q8_0
+    volumes:
+      - type: volume
+        source: ollama_models
+        target: /home/ollama/.ollama
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    pids_limit: 1024
+    mem_limit: ${STAR_OLLAMA_MEMORY_LIMIT:-48g}
+    mem_reservation: ${STAR_OLLAMA_MEMORY_RESERVATION:-24g}
+    cpus: ${STAR_OLLAMA_CPU_LIMIT:-7.5}
+    deploy:
+      resources:
+        reservations:
+          memory: ${STAR_OLLAMA_MEMORY_RESERVATION:-24g}
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          echo "$${STAR_OLLAMA_MODELS}" | tr ',' '\n' |
+          while read -r model; do
+            OLLAMA_HOST=127.0.0.1:11434 ollama show "$${model}" >/dev/null 2>&1 || exit 1;
+          done
+      interval: 15s
+      timeout: 10s
+      retries: 120
+      start_period: 30s
+    logging: *default-logging
+
+volumes:
+  worker_state:
+    # Preserve the identity volume used by the original NVIDIA technical worker
+    # (now media staging + similarity embedding).
+    name: star-nvidia-worker-state
+  review_worker_state:
+    # Legacy volume name retained so the enrolled review worker keeps
+    # its identity and state across the primary_review rename.
+    name: star-nvidia-dossier-worker-state
+  ollama_models:
+    name: star-nvidia-ollama-models
+

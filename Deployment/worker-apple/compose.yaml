@@ -1,0 +1,109 @@
+# Compatibility identity: preserves the enrolled worker volumes during the Star rename.
+name: star-apple-worker
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-build-provenance: &build-provenance
+  STAR_RELEASE_VERSION: ${STAR_RELEASE_VERSION:-unversioned}
+  STAR_BUILD_GIT_SHA: ${STAR_BUILD_GIT_SHA:-unknown}
+
+services:
+  accelerator-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args: *build-provenance
+    command:
+      - run
+      - --server
+      - ${STAR_CONTROL_PLANE_URL}
+      - --hostname
+      - ${STAR_ACCELERATOR_WORKER_HOSTNAME:-apple-deep-review}
+      - --machine-group
+      - apple-main
+      - --capabilities
+      - apple-silicon,small-vlm,medium-vlm,multi-image-review,mlx
+      - --worker-token-file
+      - /var/lib/star-worker/credential
+      - --identity-file
+      - /var/lib/star-worker/device-identity
+      - --model-provider
+      - ollama
+      - --model-key
+      - ${STAR_MAC_PRIMARY_MODEL:-ministral-3:8b-instruct-2512-q4_K_M}
+      - --model-key-csv
+      - ${STAR_MAC_ASSIST_MODEL_KEYS:-qwen3-vl:8b-instruct-q4_K_M,qwen3.8:27b}
+      - --model-url
+      - http://host.docker.internal:11434
+      - --model-allowed-host
+      - host.docker.internal
+      - --model-keep-alive
+      - ${STAR_MAC_MODEL_KEEP_ALIVE:-5m}
+      - --require-full-accelerator-residency
+      - --model-idle-ttl-seconds
+      - ${STAR_MAC_MODEL_IDLE_TTL_SECONDS:-30}
+      - --model-concurrency
+      - ${STAR_MAC_MODEL_CONCURRENCY:-6}
+      - --parallel-model-key
+      - ${STAR_MAC_PARALLEL_MODEL_KEY:-ministral-3:8b-instruct-2512-q4_K_M}
+      # Measured on this machine: six Ministral lanes, and four Qwen3-VL
+      # comparison lanes, where the fifth and sixth added no sheets an hour and
+      # grew swap. Comparisons ran on one lane before this, which is the whole
+      # reason the Mac looked slower than the NVIDIA worker at them.
+      - --parallel-model-lanes
+      - ${STAR_MAC_PARALLEL_MODEL_LANES:-ministral-3:8b-instruct-2512-q4_K_M=6,qwen3-vl:8b-instruct-q4_K_M=4}
+      - --adviser-model-key
+      - qwen3.8:27b
+      - --adviser-model-url
+      - http://host.docker.internal:8772
+      - --adviser-model-runtime-alias
+      - ${STAR_MLX_ADVISER_RUNTIME_MODEL:-/Users/Shared/Star/model-archives/Qwen3.8-27B-active}
+      - --adviser-model-artifact-checksum
+      - ${STAR_MLX_ADVISER_ARTIFACT_CHECKSUM:-}
+      - --adviser-model-allowed-host
+      - host.docker.internal
+      - --power-status-url
+      - http://host.docker.internal:8769
+      - --power-status-allowed-host
+      - host.docker.internal
+      # Default keeps the Apple worker on mains. Set STAR_MAC_AC_POWER_FLAG to
+      # --no-require-ac-power to let it work on battery down to the floor below.
+      - ${STAR_MAC_AC_POWER_FLAG:---require-ac-power}
+      - --minimum-battery
+      - ${STAR_MAC_MINIMUM_BATTERY:-50}
+      - --battery-resume-percent
+      - ${STAR_MAC_BATTERY_RESUME_PERCENT:-50}
+      - --heavy-task-cooldown-seconds
+      - ${STAR_MAC_MODEL_COOLDOWN_SECONDS:-0}
+    environment:
+      STAR_WORKER_RELEASE_VERSION: v272
+      STAR_ENVIRONMENT: production
+      STAR_HIGHLIGHT_CONTEXT_TOKENS: "16384"
+      STAR_HIGHLIGHT_CONTACT_SHEET_EDGE: "4096"
+      STAR_ADVISER_MODEL_API_KEY: ${STAR_ADVISER_MODEL_API_KEY:-}
+      STAR_APPLE_POWER_TOKEN: ${STAR_APPLE_POWER_TOKEN}
+    restart: always
+    init: true
+    stop_grace_period: 90s
+    volumes:
+      - type: volume
+        source: model_worker_state
+        target: /var/lib/star-worker
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    pids_limit: 256
+    mem_limit: ${STAR_MODEL_WORKER_MEMORY_LIMIT:-16g}
+    mem_reservation: ${STAR_MODEL_WORKER_MEMORY_RESERVATION:-4g}
+    cpus: ${STAR_MODEL_WORKER_CPU_LIMIT:-4.0}
+    logging: *default-logging
+
+volumes:
+  model_worker_state:
+    name: star-apple-model-worker-state

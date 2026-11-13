@@ -1,0 +1,310 @@
+# The Star coordinator: postgres, api, scheduler, web, the no-port Immich writer, a nightly dump.
+# It runs on any always-on Docker host (a NAS, a mini PC, a home server).
+# Secrets and the address of this machine come from the ignored .env next to this file
+# (see .env.example). Without STAR_LAN_ADDRESS the web UI listens on 127.0.0.1 only.
+# `tools/star build vNN` rewrites the four vNN markers below.
+name: star
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-hardened: &hardened
+  restart: always
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: ["no-new-privileges"]
+  cap_drop: [ALL]
+  logging: *logging
+
+x-star-environment: &star-environment
+  POSTGRES_DB: star
+  POSTGRES_USER: star
+  STAR_ENVIRONMENT: production
+  STAR_IMAGE_TAG: v272
+  STAR_API_WORKERS: 4
+  STAR_MINIMUM_WORKER_PROTOCOL_VERSION: 2
+  STAR_MAXIMUM_WORKER_PROTOCOL_VERSION: 2
+  STAR_REQUIRE_MATCHING_WORKER_RELEASE: false
+  STAR_PUBLIC_ORIGIN: http://${STAR_LAN_ADDRESS:-127.0.0.1}:3822
+  STAR_BIND_ADDRESS: ${STAR_LAN_ADDRESS:-127.0.0.1}
+  STAR_HTTP_PORT: 3822
+  STAR_LOG_LEVEL: INFO
+  STAR_COORDINATOR_NAME: ${STAR_COORDINATOR_NAME:-star-coordinator}
+  STAR_COORDINATOR_ROLE: nas-coordinator
+  STAR_ALLOWED_HOSTS: ${STAR_LAN_ADDRESS:-127.0.0.1},localhost,127.0.0.1,api
+  STAR_CORS_ORIGINS: http://${STAR_LAN_ADDRESS:-127.0.0.1}:3822
+  STAR_DATABASE_HOST: postgres
+  STAR_DATABASE_PORT: 5432
+  STAR_DATABASE_NAME: star
+  STAR_DATABASE_USER: star
+  STAR_DATABASE_POOL_SIZE: 3
+  STAR_DATABASE_MAX_OVERFLOW: 1
+  STAR_DATABASE_POOL_TIMEOUT_SECONDS: 8
+  STAR_DATABASE_POOL_RECYCLE_SECONDS: 900
+  STAR_SCHEDULER_POLL_SECONDS: 3
+  STAR_SCHEDULER_BUSY_YIELD_SECONDS: 0.5
+  STAR_SCHEDULER_TASK_BATCH_SIZE: 200
+  STAR_LIBRARY_METADATA_ADMISSION_BATCH_SIZE: 100
+  STAR_SCHEDULER_HOT_ADMISSION_BATCH_SIZE: 100
+  STAR_SCHEDULER_QUEUE_LOW_WATERMARK: 200
+  STAR_SCHEDULER_QUEUE_HIGH_WATERMARK: 800
+  STAR_PRESSURE_CPU_HIGH_PERCENT: 90
+  STAR_PRESSURE_MEMORY_HIGH_PERCENT: 90
+  STAR_PRESSURE_SWAP_HIGH_PERCENT: 20
+  STAR_PRESSURE_EVENT_LOOP_LAG_MS: 200
+  STAR_PRESSURE_BACKOFF_SECONDS: 5
+  STAR_NAS_STAR_CPU_BUDGET: 5.5
+  STAR_NAS_STAR_MEMORY_BUDGET_BYTES: 5368709120
+  STAR_AGENT_DIAGNOSTICS_REQUIRE_EDGE: true
+  STAR_AGENT_OPERATIONS_REQUIRE_EDGE: true
+  STAR_WORKER_AUTO_ENROLL_ENABLED: true
+  STAR_WORKER_AUTO_ENROLL_REQUIRE_EDGE: true
+  STAR_WORKER_AUTO_ENROLL_CIDRS: ${STAR_WORKER_AUTO_ENROLL_CIDRS:-127.0.0.1/32}
+  STAR_WORKER_AUTO_ENROLL_CAPABILITIES: apple-silicon,cpu-light,cuda,ffmpeg,large-vlm,metadata,medium-vlm,mlx,multi-image-review,semantic-embedding,small-vlm
+  STAR_LOCAL_PASSWORD_SETUP_ENABLED: true
+  STAR_LIBRARY_PROGRAM_ENABLE_ALLOWED: true
+  STAR_WRITEBACK_ENABLED: "true"
+  STAR_AUTOMATIC_ASSET_VLM_MODELS: ministral-3:8b-instruct-2512-q4_K_M,qwen3-vl:8b-instruct-q4_K_M,qwen3.8:27b
+  STAR_AUTOMATIC_ASSET_VLM_MAX_MODELS: 2
+  STAR_ARTIFACT_ROOT: /var/lib/star/artifacts
+  STAR_MODEL_ROOT: /var/lib/star/models
+  STAR_ARTIFACT_CACHE_MAX_BYTES: 536870912000
+  STAR_ARTIFACT_CACHE_TARGET_BYTES: 493921239040
+  STAR_MANAGED_STORAGE_HARD_LIMIT_BYTES: 687194767360
+  STAR_MANAGED_STORAGE_WARNING_RATIO: 0.80
+  STAR_STAGING_ENABLED: "true"
+  STAR_STAGING_WINDOW_PHOTOS: 50000
+  STAR_STAGING_LOOP_INTERVAL_SECONDS: 60
+  STAR_STAGING_EVICTION_GRACE_DAYS: 7
+  STAR_PREVIEW_STREAM_CONCURRENCY: 6
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg18-trixie@sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff
+    pull_policy: never
+    command:
+      - postgres
+      - -c
+      - shared_buffers=768MB
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - compute_query_id=on
+      - -c
+      - track_io_timing=on
+      - -c
+      - effective_cache_size=3GB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - max_connections=60
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - maintenance_io_concurrency=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - autovacuum=on
+      - -c
+      - autovacuum_max_workers=3
+      - -c
+      - autovacuum_naptime=15s
+      - -c
+      - autovacuum_vacuum_cost_limit=1000
+    restart: always
+    stop_grace_period: 60s
+    environment:
+      POSTGRES_DB: star
+      POSTGRES_USER: star
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    networks: [data]
+    volumes:
+      - ${STAR_DATA_DIR:-./star-data}/postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -U star -d star"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    security_opt: ["no-new-privileges"]
+    pids_limit: 256
+    shm_size: 1g
+    mem_limit: ${STAR_POSTGRES_MEMORY_LIMIT:-1792m}
+    mem_reservation: ${STAR_POSTGRES_MEMORY_RESERVATION:-1024m}
+    cpus: ${STAR_POSTGRES_CPU_LIMIT:-2}
+    logging: *logging
+
+  api:
+    <<: *hardened
+    image: star/api:v272
+    pull_policy: never
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        /app/.venv/bin/alembic upgrade head
+        exec /app/.venv/bin/uvicorn star.main:app --host 0.0.0.0 --port 8000 --workers "$${STAR_API_WORKERS:-4}" --no-access-log
+    stop_grace_period: 45s
+    env_file: [.env]
+    environment:
+      <<: *star-environment
+      STAR_DATABASE_POOL_SIZE: 6
+      STAR_DATABASE_MAX_OVERFLOW: 3
+      STAR_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [edge, data]
+    volumes:
+      - ${STAR_DATA_DIR:-./star-data}/artifacts:/var/lib/star/artifacts
+      - ${STAR_DATA_DIR:-./star-data}/models:/var/lib/star/models
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://api:8000/api/v1/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    pids_limit: 256
+    mem_limit: ${STAR_API_MEMORY_LIMIT:-2048m}
+    mem_reservation: ${STAR_API_MEMORY_RESERVATION:-1024m}
+    cpus: ${STAR_API_CPU_LIMIT:-3}
+
+  scheduler:
+    <<: *hardened
+    image: star/api:v272
+    pull_policy: never
+    command: ["/app/.venv/bin/python", "-m", "star.scheduler_main"]
+    stop_grace_period: 45s
+    env_file: [.env]
+    environment:
+      <<: *star-environment
+      STAR_COORDINATOR_ROLE: scheduler
+      STAR_DATABASE_POOL_SIZE: 3
+      STAR_DATABASE_MAX_OVERFLOW: 1
+      STAR_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge, data]
+    volumes:
+      - ${STAR_DATA_DIR:-./star-data}/artifacts:/var/lib/star/artifacts
+      - ${STAR_DATA_DIR:-./star-data}/models:/var/lib/star/models
+    pids_limit: 128
+    mem_limit: ${STAR_SCHEDULER_MEMORY_LIMIT:-512m}
+    mem_reservation: ${STAR_SCHEDULER_MEMORY_RESERVATION:-256m}
+    cpus: ${STAR_SCHEDULER_CPU_LIMIT:-0.75}
+
+  # The only process that writes approved ratings to Immich. No port, no volume.
+  writeback-worker:
+    <<: *hardened
+    image: star/api:v272
+    pull_policy: never
+    command: ["/app/.venv/bin/python", "-m", "star.writeback_main"]
+    stop_grace_period: 45s
+    env_file: [.env]
+    environment:
+      <<: *star-environment
+      STAR_COORDINATOR_ROLE: isolated-rating-writer
+      STAR_DATABASE_POOL_SIZE: 1
+      STAR_DATABASE_MAX_OVERFLOW: 0
+      STAR_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge, data]
+    pids_limit: 128
+    mem_limit: ${STAR_WRITEBACK_MEMORY_LIMIT:-256m}
+    mem_reservation: ${STAR_WRITEBACK_MEMORY_RESERVATION:-128m}
+    cpus: ${STAR_WRITEBACK_CPU_LIMIT:-0.25}
+
+  web:
+    <<: *hardened
+    image: star/web:v272
+    pull_policy: never
+    stop_grace_period: 30s
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${STAR_LAN_ADDRESS:-127.0.0.1}:3822:8080"
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+    pids_limit: 128
+    mem_limit: ${STAR_WEB_MEMORY_LIMIT:-256m}
+    mem_reservation: ${STAR_WEB_MEMORY_RESERVATION:-128m}
+    cpus: ${STAR_WEB_CPU_LIMIT:-0.25}
+
+  # One verified custom-format dump a night at 03:00 UTC into star-data/starml/database,
+  # fourteen kept. Restore it locally with scripts/star-db-local.sh.
+  database-backup:
+    <<: *hardened
+    image: pgvector/pgvector:0.8.6-pg18-trixie@sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff
+    pull_policy: never
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        umask 077
+        until_0300() {
+          now=$$(date -u +%s)
+          target=$$(date -u -d "$$(date -u +%Y-%m-%d) 03:00:00" +%s)
+          [ "$$target" -gt "$$now" ] || target=$$((target + 86400))
+          echo $$((target - now))
+        }
+        while true; do
+          newest=$$(ls -t /starml/database/star-*.dump 2>/dev/null | head -n 1)
+          if [ -n "$$newest" ] && [ $$(( $$(date -u +%s) - $$(stat -c %Y "$$newest") )) -lt 72000 ]; then
+            sleep "$$(until_0300)"
+          fi
+          install -d -m 0700 /starml/database
+          stamp=$$(date -u +%Y%m%dT%H%M%SZ)
+          partial=/starml/database/.star-$$stamp.dump.partial
+          if pg_dump --host postgres --username star --dbname star --format custom --compress 6 --file "$$partial" \
+            && pg_restore --list "$$partial" >/dev/null; then
+            chmod 0600 "$$partial"
+            mv "$$partial" "/starml/database/star-$$stamp.dump"
+            (cd /starml/database && sha256sum "star-$$stamp.dump" > "star-$$stamp.dump.sha256")
+            ls -t /starml/database/star-*.dump | tail -n +15 | while read -r old; do rm -f "$$old" "$$old.sha256"; done
+            echo "database_backup_completed file=star-$$stamp.dump"
+            sleep "$$(until_0300)"
+          else
+            rm -f "$$partial"
+            echo "database_backup_failed retry_seconds=900" >&2
+            sleep 900
+          fi
+        done
+    stop_grace_period: 30s
+    user: "10001:10001"
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [data]
+    volumes:
+      - ${STAR_DATA_DIR:-./star-data}/starml:/starml
+    pids_limit: 64
+    mem_limit: ${STAR_BACKUP_MEMORY_LIMIT:-256m}
+    mem_reservation: ${STAR_BACKUP_MEMORY_RESERVATION:-128m}
+    cpus: ${STAR_BACKUP_CPU_LIMIT:-0.25}
+
+networks:
+  # LAN-facing bridge: web publishes 3822; api, scheduler and the writer reach Immich.
+  edge:
+    name: star-nas-edge
+  # PostgreSQL is reachable only from Star's own services.
+  data:
+    name: star-nas-data
+    internal: true

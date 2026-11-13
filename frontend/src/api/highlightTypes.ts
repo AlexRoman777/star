@@ -1,0 +1,32 @@
+export type HighlightOverview = {
+  generation: string;
+  eligible: number;
+  stable: number;
+  four_star_pool: number;
+  four_star_waiting: number;
+  four_star_active: number;
+  ordered?: number;
+  five_star_pool?: number;
+  /** Published five-star photos; the Advanced review decides these, Highlights only orders them. */
+  champions: number;
+  five_star_count?: number;
+  four_star_count?: number;
+  five_star_share?: number;
+  quality_shortfall: number;
+  unstable_cutoff: number;
+  source_unavailable: number;
+  active_comparisons: number;
+  analyzed_population: number;
+  four_star_target: number;
+  five_star_target: number;
+  quota_enforced: false;
+  promotes_stars?: false;
+  relative_selection_enabled: true;
+  selection_order: Array<"four_to_five">;
+  manual_phase?: "four_to_five" | null;
+  manual_phase_state?: "idle" | "waiting" | "waiting_for_primary" | "working" | "complete";
+  manual_phases?: Array<"four_to_five">;
+  manual_phase_states?: Partial<Record<"four_to_five", "waiting" | "waiting_for_primary" | "working" | "complete">>;
+  filter_state?: "idle" | "waiting" | "waiting_for_primary" | "resetting" | "working" | "complete";
+  filter_superseded?: number;
+};

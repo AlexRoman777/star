@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1.19
+
+ARG OLLAMA_IMAGE_PLATFORM=linux/amd64
+FROM --platform=${OLLAMA_IMAGE_PLATFORM} ollama/ollama:0.32.1@sha256:1d9f0b83b852efef42435e65fd53d0dc4f462a60dabf5c719058c99d47f32e36
+
+ARG STAR_RELEASE_VERSION=unversioned
+ARG STAR_BUILD_GIT_SHA=unknown
+LABEL org.opencontainers.image.version="$STAR_RELEASE_VERSION" \
+    org.opencontainers.image.revision="$STAR_BUILD_GIT_SHA"
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10003 ollama-worker \
+    && useradd --uid 10003 --gid ollama-worker --create-home \
+      --home-dir /home/ollama --shell /usr/sbin/nologin ollama-worker \
+    && mkdir -p /home/ollama/.ollama \
+    && chown -R 10003:10003 /home/ollama
+
+ENV HOME=/home/ollama \
+    OLLAMA_MODELS=/home/ollama/.ollama/models
+
+COPY --chown=10003:10003 --chmod=0555 ollama-entrypoint.sh /usr/local/bin/star-ollama
+
+USER 10003:10003
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["curl", "--fail", "--silent", "http://127.0.0.1:11434/api/tags"]
+
+ENTRYPOINT ["/usr/local/bin/star-ollama"]

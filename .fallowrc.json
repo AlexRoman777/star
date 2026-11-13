@@ -1,0 +1,4 @@
+{
+  "entry": ["frontend/src/main.tsx", "frontend/vite.config.ts"],
+  "ignorePatterns": ["frontend/coverage/**", "frontend/dist/**"]
+}

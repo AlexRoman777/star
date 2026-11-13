@@ -1,0 +1,59 @@
+{
+  "name": "star-web",
+  "private": true,
+  "version": "272.0.0",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24.18.0",
+    "pnpm": "11.22.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage.enabled --coverage.provider=istanbul --coverage.reporter=json",
+    "test:visual:brave": "pnpm run build && playwright test --config playwright.brave.config.ts",
+    "test:visual:brave:update": "pnpm run build && playwright test --config playwright.brave.config.ts --update-snapshots",
+    "test:watch": "vitest",
+    "fallow": "fallow --fail-on-issues --format json --quiet --explain",
+    "fallow:dead-code": "fallow dead-code --fail-on-issues --format json --quiet --explain",
+    "fallow:dupes": "fallow dupes --fail-on-issues --format json --quiet --explain",
+    "fallow:health": "fallow health --coverage coverage/coverage-final.json --max-cyclomatic 20 --max-cognitive 15 --max-crap 30 --min-score 85 --format json --quiet --explain",
+    "fallow:audit": "fallow audit --format json --quiet --gate new-only --explain",
+    "fallow:security": "fallow security --format json --quiet --surface --explain",
+    "fallow:ci": "pnpm run fallow && pnpm run fallow:dead-code && pnpm run fallow:dupes && pnpm run fallow:health",
+    "fallow:security:ci": "fallow security --ci --fail-on-issues --format json --quiet --explain",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.102.0",
+    "@tanstack/react-virtual": "3.14.10",
+    "photoswipe": "5.4.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router-dom": "7.18.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "26.2.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.1.0",
+    "@vitest/coverage-istanbul": "4.1.10",
+    "eslint": "10.9.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.4",
+    "fallow": "3.17.0",
+    "globals": "17.11.0",
+    "jsdom": "30.0.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vite": "8.2.2",
+    "vitest": "4.1.10"
+  }
+}

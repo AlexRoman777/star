@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-20",
+  "policy": "Every production model is identified by an immutable revision, digest, or checksum. Moving tags are archived as resolved runtime blobs before production use.",
+  "models": [
+    {
+      "id": "q-future/Q-ReAlign-Mini-0.8B",
+      "revision": "fe1f45a7574c9e9d908875af9f7e90cb946aa19f",
+      "runtime": "transformers",
+      "role": "quality-specialist",
+      "archive": "docker-volume:star-q-realign-model-cache"
+    },
+    {
+      "id": "somepago/AestheticSigLIP",
+      "revision": "25cb379f31159d4bae26c4314ec9482fea03dddd",
+      "runtime": "transformers",
+      "license": "Apache-2.0",
+      "role": "portfolio-specialist",
+      "archive": "docker-volume:star-aesthetic-siglip-model-cache"
+    },
+    {
+      "id": "KlingTeam/HumanAesExpert-1B",
+      "revision": "b8f7ee3f3a1217ecd331fd6d57b6959f5c0da183",
+      "runtime": "transformers-custom-code",
+      "license": "MIT",
+      "role": "portrait-specialist",
+      "archive": "docker-volume:star-humanaesexpert-model-cache"
+    },
+    {
+      "id": "mediapipe/face_landmarker",
+      "revision": "float16-v1",
+      "runtime": "mediapipe",
+      "role": "eye-state-detection",
+      "source": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+      "archive": "docker-image:eye-state-model"
+    },
+    {
+      "id": "ultralytics/yoloe-11s-seg",
+      "revision": "yoloe-11s-seg-v8.4.0",
+      "runtime": "ultralytics",
+      "role": "subject-detection",
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-11s-seg.pt",
+      "sha256": "8e439445c87338b79d9ce21dec109f4621e26df67e94d26ea1a98c1e64dce3e3",
+      "archive": "docker-image:subject-model"
+    },
+    {
+      "id": "ultralytics/mobileclip_blt.ts",
+      "revision": "v8.4.0",
+      "runtime": "torchscript",
+      "role": "subject-detection-text-encoder",
+      "source": "https://github.com/ultralytics/assets/releases/download/v8.4.0/mobileclip_blt.ts",
+      "sha256": "a67804d1b0f07b8b9a20c1761ec0847f34660f5fa338ec70e8f3fce68ed95e54",
+      "archive": "docker-image:subject-model"
+    },
+    {
+      "id": "qwen3-vl:4b-instruct-q4_K_M",
+      "revision": "resolved-by-ollama-manifest",
+      "runtime": "ollama",
+      "role": "small-vlm",
+      "archive": "docker-volume:star-nvidia-ollama-models"
+    },
+    {
+      "id": "ministral-3:3b",
+      "revision": "resolved-by-ollama-manifest",
+      "runtime": "ollama",
+      "role": "small-vlm-challenger",
+      "archive": "docker-volume:star-nvidia-ollama-models"
+    },
+    {
+      "id": "qwen/qwen3.6-27b",
+      "revision": "local-LM-Studio-artifact",
+      "runtime": "mlx",
+      "role": "medium-vlm",
+      "archive": "directory:~/.lmstudio/models"
+    },
+    {
+      "id": "nvidia/nemotron-3-nano",
+      "revision": "local-LM-Studio-artifact",
+      "runtime": "mlx-or-gguf",
+      "role": "evidence-synthesis",
+      "archive": "directory:~/.lmstudio/models"
+    }
+  ]
+}

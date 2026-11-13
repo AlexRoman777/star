@@ -1,0 +1,252 @@
+#!/bin/sh
+# Star release tool: build, deploy, status. Nothing else.
+#
+#   tools/star build vNN                 bump the version, run scripts/verify.sh, build the wheel
+#                                        and the two NAS images (about 40 s)
+#   tools/star deploy [workers|nvidia|apple] [--apply] [--action update|logs|restart|stop|start]
+#                                        update the workers from the built package; dry run
+#                                        without --apply
+#   tools/star status                    artifacts, NAS release, both machines
+#
+# The NAS has no SSH: after `build`, import Deployment/coordinator/*.tar.gz in the NAS's Docker UI and redeploy the
+# project from Deployment/coordinator/compose.yaml, then run `deploy --apply`.
+set -eu
+
+SOURCE=$0
+while [ -L "$SOURCE" ]; do
+  dir=$(CDPATH= cd -- "$(dirname -- "$SOURCE")" && pwd)
+  SOURCE=$(readlink "$SOURCE")
+  case "$SOURCE" in /*) ;; *) SOURCE=$dir/$SOURCE ;; esac
+done
+ROOT=$(CDPATH= cd -- "$(dirname -- "$SOURCE")/.." && pwd)
+cd "$ROOT"
+
+NVIDIA_SSH=${STAR_NVIDIA_SSH:-user@192.168.0.20}
+NVIDIA_DIR=${STAR_NVIDIA_DIR:-/opt/star/Deployment/worker-nvidia}
+NVIDIA_KEY=${STAR_NVIDIA_SSH_KEY:-$HOME/.ssh/star}
+NAS_URL=${STAR_NAS_URL:-http://192.168.0.10:3822}
+SSH_OPTS="-o IdentitiesOnly=yes -i $NVIDIA_KEY -o BatchMode=yes -o ConnectTimeout=10 -o ControlMaster=auto -o ControlPersist=60 -o ControlPath=/tmp/star-ssh-%C"
+
+fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
+say() { printf '%s\n' "$*"; }
+
+current_release() { cat "$ROOT/RELEASE"; }
+
+# ---------------------------------------------------------------- build
+
+bump_release() {
+  requested=$1
+  current=$(current_release)
+  [ "$requested" = "$current" ] && return 1
+  current_number=${current#v}
+  requested_number=${requested#v}
+  [ "$requested_number" -eq $((current_number + 1)) ] \
+    || fail "source is $current; the next release is v$((current_number + 1))"
+  python3 - "$current_number" "$requested_number" <<'EOF'
+import re, sys
+from pathlib import Path
+old, new = sys.argv[1], sys.argv[2]
+def replace(path, pattern, repl, count=1):
+    text = Path(path).read_text(encoding="utf-8")
+    updated, n = re.subn(pattern, repl, text, count=count, flags=re.M)
+    if n != count:
+        raise SystemExit(f"{path}: expected {count} replacement(s), made {n}")
+    Path(path).write_text(updated, encoding="utf-8")
+replace("pyproject.toml", rf'^version = "{old}\.0\.0"$', f'version = "{new}.0.0"')
+replace("uv.lock", rf'(\[\[package\]\]\nname = "star"\nversion = "){old}\.0\.0(")', rf'\g<1>{new}.0.0\g<2>')
+replace("frontend/package.json", rf'"version": "{old}\.0\.0"', f'"version": "{new}.0.0"')
+replace("RELEASE", rf'^v{old}$', f"v{new}")
+# Anchored to the keys they mean. A bare version token also matched prose, so
+# the Apple worker's comment absorbed three bumps while the worker kept reporting the
+# release before them.
+replace("Deployment/coordinator/compose.yaml", rf'^  STAR_IMAGE_TAG: v{old}$', f"  STAR_IMAGE_TAG: v{new}")
+replace("Deployment/coordinator/compose.yaml", rf'^(    image: star/(?:api|web):)v{old}$', rf'\g<1>v{new}', 4)
+replace("Deployment/worker-nvidia/compose.yaml", rf'^(      STAR_WORKER_RELEASE_VERSION: )v{old}$', rf'\g<1>v{new}', 2)
+replace("Deployment/worker-apple/compose.yaml", rf'^(      STAR_WORKER_RELEASE_VERSION: )v{old}$', rf'\g<1>v{new}')
+EOF
+  say "Release metadata: $requested"
+}
+
+build_command() {
+  release=${1:-}
+  [ -n "$release" ] || fail "usage: star build vNN"
+  case "$release" in v[0-9]*) ;; *) fail "release must look like v66" ;; esac
+  dirty=$(git status --porcelain --untracked-files=no)
+  [ -z "$dirty" ] || { printf '%s\n' "$dirty" >&2; fail "commit your changes first; a build must come from a committed tree"; }
+  if bump_release "$release"; then
+    git commit -q -am "release $release" && say "Committed the version bump as 'release $release'"
+  fi
+  "$ROOT/scripts/verify.sh"
+  git_sha=$(git rev-parse HEAD)
+
+  # Worker package: the wheel plus the two provenance values the Dockerfiles take as build args.
+  wheel_dir=$(mktemp -d "${TMPDIR:-/tmp}/star-wheel.XXXXXX")
+  uv build --wheel --out-dir "$wheel_dir" >/dev/null
+  wheel=$(ls "$wheel_dir"/star-*.whl)
+  for machine in worker-nvidia worker-apple; do
+    package="$ROOT/Deployment/$machine/Package"
+    mkdir -p "$package"
+    rm -f "$package"/star-*.whl "$package"/provenance.env "$package"/PROVENANCE.json "$package"/SHA256SUMS "$package"/TRANSFER_SHA256SUMS "$package"/*.tar.gz
+    cp "$wheel" "$package/"
+    printf 'STAR_RELEASE_VERSION=%s\nSTAR_BUILD_GIT_SHA=%s\n' "$release" "$git_sha" >"$package/provenance.env"
+  done
+  rm -rf "$wheel_dir"
+  say "Worker package: $(basename "$wheel")"
+
+  # NAS images, built for the NAS platform and saved as importable archives.
+  destination="$ROOT/Deployment/coordinator"
+  rm -f "$destination"/star-*-nas-*.tar.gz
+  for image in api web; do
+    case "$image" in api) dockerfile=backend/Dockerfile ;; web) dockerfile=frontend/Dockerfile ;; esac
+    docker buildx build --platform linux/amd64 --file "$dockerfile" \
+      --tag "star/$image:$release" \
+      --build-arg "STAR_RELEASE_VERSION=$release" --build-arg "STAR_BUILD_GIT_SHA=$git_sha" \
+      --output "type=docker,dest=$destination/star-$image-nas-$release.tar" . >/dev/null 2>&1 \
+      || fail "docker build of star/$image failed (rerun without >/dev/null to see why)"
+    gzip -f "$destination/star-$image-nas-$release.tar"
+  done
+  say "NAS images: Deployment/coordinator/star-{api,web}-nas-$release.tar.gz"
+  say "Next: import both archives in the NAS's Docker UI, redeploy the star project from Deployment/coordinator/compose.yaml, then run: tools/star deploy --apply"
+}
+
+# ---------------------------------------------------------------- deploy
+
+run() {
+  if [ "$APPLY" -eq 1 ]; then "$@"; else printf '  %s\n' "$*"; fi
+}
+
+deploy_apple() {
+  action=$1
+  env_file=$ROOT/Deployment/worker-apple/.env
+  [ -f "$env_file" ] || fail "missing $env_file (copy .env.example)"
+  compose="docker compose --env-file $env_file --env-file $ROOT/Deployment/worker-apple/Package/provenance.env -f $ROOT/Deployment/worker-apple/compose.yaml"
+  case "$action" in
+    update)
+      run "$ROOT/Deployment/worker-apple/install-apple-power.sh"
+      run "$ROOT/Deployment/worker-apple/install-qwen38-mlx.sh"
+      run $compose up -d --build --remove-orphans --wait --wait-timeout 180
+      ;;
+    logs) run $compose logs --tail=120 accelerator-worker ;;
+    restart|stop|start) run $compose "$action" ;;
+  esac
+}
+
+deploy_nvidia() {
+  action=$1
+  [ -f "$NVIDIA_KEY" ] || fail "NVIDIA SSH key not found: $NVIDIA_KEY"
+  compose="docker compose --env-file .env --env-file Package/provenance.env"
+  case "$action" in
+    update)
+      run rsync -az --delete -e "ssh $SSH_OPTS" --exclude .env --exclude '__pycache__' "$ROOT/Deployment/worker-nvidia/" "$NVIDIA_SSH:$NVIDIA_DIR/"
+      run ssh $SSH_OPTS "$NVIDIA_SSH" "cd $NVIDIA_DIR && $compose up -d --build --remove-orphans --wait --wait-timeout 300"
+      ;;
+    logs) run ssh $SSH_OPTS "$NVIDIA_SSH" "cd $NVIDIA_DIR && $compose logs --tail=120 technical-worker gpu-worker ollama" ;;
+    restart|stop|start) run ssh $SSH_OPTS "$NVIDIA_SSH" "cd $NVIDIA_DIR && $compose $action" ;;
+  esac
+}
+
+wait_for_workers() {
+  # The workers prove themselves by heartbeating the new release to the NAS.
+  release=$(current_release)
+  token=$(sed -n 's/^STAR_AGENT_DIAGNOSTICS_TOKEN=//p' "$ROOT/.env.agent" 2>/dev/null | head -1)
+  [ -n "$token" ] || { say "No .env.agent token; skipping the heartbeat check. Look at Machines in the UI."; return 0; }
+  deadline=$(( $(date +%s) + 240 ))
+  while :; do
+    seen=$(curl --silent --max-time 5 -H "Authorization: Bearer $token" -H "X-Star-Edge: star-edge" \
+      "$NAS_URL/api/v1/agent/diagnostics" \
+      | python3 -c 'import json,sys
+d=json.load(sys.stdin); want=sys.argv[1]
+rows=(d.get("workers") or {}).get("items") or []
+ok=[w.get("label") for w in rows if w.get("online") and w.get("release_version")==want]
+print(" ".join(sorted(x for x in ok if x)))' "$release" 2>/dev/null || true)
+    case "$seen" in
+      *nvidia-photo-review*apple-deep-review*|*apple-deep-review*nvidia-photo-review*) say "Workers on $release: $seen"; return 0 ;;
+    esac
+    [ "$(date +%s)" -lt "$deadline" ] || { say "Workers seen on $release so far: ${seen:-none}. Check Machines."; return 1; }
+    sleep 10
+  done
+}
+
+deploy_command() {
+  target=workers; APPLY=0; action=update
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      workers|nvidia|apple) target=$1; shift ;;
+      --apply) APPLY=1; shift ;;
+      --action) action=$2; shift 2 ;;
+      *) fail "unknown deploy option: $1" ;;
+    esac
+  done
+  case "$action" in update|logs|restart|stop|start) ;; *) fail "unknown action: $action" ;; esac
+  [ "$APPLY" -eq 1 ] || say "Dry run; add --apply to execute:"
+  if [ "$action" = update ] && [ "$APPLY" -eq 1 ]; then
+    curl --fail --silent --max-time 5 "$NAS_URL/api/v1/health/ready" >/dev/null || fail "NAS is not ready at $NAS_URL; install the NAS bundle first"
+  fi
+  case "$target" in
+    apple) deploy_apple "$action" ;;
+    nvidia) deploy_nvidia "$action" ;;
+    workers)
+      nvidia_log=$(mktemp); apple_log=$(mktemp)
+      ( deploy_nvidia "$action" ) >"$nvidia_log" 2>&1 & nvidia_pid=$!
+      ( deploy_apple "$action" ) >"$apple_log" 2>&1 & apple_pid=$!
+      nvidia_status=0; apple_status=0
+      wait "$nvidia_pid" || nvidia_status=$?
+      wait "$apple_pid" || apple_status=$?
+      sed 's/^/[nvidia] /' "$nvidia_log"; sed 's/^/[apple]  /' "$apple_log"
+      rm -f "$nvidia_log" "$apple_log"
+      [ "$nvidia_status" -eq 0 ] || fail "nvidia $action failed"
+      [ "$apple_status" -eq 0 ] || fail "apple $action failed"
+      ;;
+  esac
+  if [ "$action" = update ] && [ "$APPLY" -eq 1 ]; then wait_for_workers; fi
+}
+
+# ---------------------------------------------------------------- status
+
+status_command() {
+  release=$(current_release)
+  say "Release: $release"
+  for file in Deployment/coordinator/star-api-nas-$release.tar.gz Deployment/coordinator/star-web-nas-$release.tar.gz \
+              Deployment/worker-nvidia/Package/provenance.env Deployment/worker-apple/Package/provenance.env; do
+    if [ -f "$file" ]; then say "  ready    $file"; else say "  missing  $file"; fi
+  done
+  if curl --fail --silent --max-time 3 "$NAS_URL/api/v1/health/ready" >/dev/null; then
+    token=$(sed -n 's/^STAR_AGENT_DIAGNOSTICS_TOKEN=//p' "$ROOT/.env.agent" 2>/dev/null | head -1)
+    nas_release=
+    [ -z "$token" ] || nas_release=$(curl --silent --max-time 5 -H "Authorization: Bearer $token" -H "X-Star-Edge: star-edge" \
+      "$NAS_URL/api/v1/agent/diagnostics" | python3 -c 'import json,sys
+d=json.load(sys.stdin); print(d.get("release_version") or (d.get("coordinator") or {}).get("release_version") or "")' 2>/dev/null || true)
+    say "NAS: ready at $NAS_URL${nas_release:+ ($nas_release)}"
+  else
+    say "NAS: not ready at $NAS_URL"
+  fi
+  if [ -f "$ROOT/Deployment/worker-apple/.env" ]; then
+    running=$(docker compose --env-file "$ROOT/Deployment/worker-apple/.env" -f "$ROOT/Deployment/worker-apple/compose.yaml" ps --services --status running 2>/dev/null | wc -l | tr -d ' ')
+    say "Apple: $running of 1 containers running"
+    if [ "$(uname -s)" = Darwin ]; then
+      for pair in "apple-power-token 8769 /health" "qwen38-mlx-runtime/token 8772 /v1/models"; do
+        set -- $pair
+        token_file="$HOME/Library/Application Support/Star/$1"
+        if [ -s "$token_file" ] && curl --fail --silent --max-time 3 -H "Authorization: Bearer $(cat "$token_file")" "http://127.0.0.1:$2$3" >/dev/null; then
+          say "Apple native: port $2 ready"
+        else
+          say "Apple native: port $2 unavailable"
+        fi
+      done
+    fi
+  fi
+  if [ -f "$NVIDIA_KEY" ]; then
+    if out=$(ssh $SSH_OPTS "$NVIDIA_SSH" "cd $NVIDIA_DIR && docker compose --env-file .env ps --format '{{.Service}} {{.Status}}'" 2>&1); then
+      printf '%s\n' "$out" | sed 's/^/  nvidia  /'
+    else
+      say "NVIDIA: unreachable ($out)"
+    fi
+  fi
+}
+
+case "${1:-}" in
+  build) shift; build_command "$@" ;;
+  deploy) shift; deploy_command "$@" ;;
+  status) status_command ;;
+  *) sed -n '2,12p' "$0"; exit 2 ;;
+esac

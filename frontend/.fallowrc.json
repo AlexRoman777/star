@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "unused-files": "error",
+    "unused-exports": "error",
+    "unused-dependencies": "error",
+    "unlisted-dependencies": "error",
+    "unresolved-imports": "error",
+    "circular-dependencies": "error",
+    "re-export-cycles": "error"
+  },
+  "health": {
+    "maxCyclomatic": 20,
+    "maxCognitive": 15,
+    "maxCrap": 30,
+    "coverage": "coverage/coverage-final.json"
+  },
+  "security": {
+    "categories": {
+      "include": [
+        "cleartext-transport",
+        "dangerous-html",
+        "hardcoded-secret",
+        "insecure-cookie",
+        "llm-call-injection",
+        "open-redirect",
+        "permissive-cors",
+        "resource-amplification",
+        "secret-to-network"
+      ]
+    }
+  }
+}

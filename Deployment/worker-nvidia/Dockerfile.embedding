@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1.19
+
+FROM python:3.11.13-slim-trixie@sha256:9bffe4353b925a1656688797ebc68f9c525e79b1d377a764d232182a519eeec4
+
+ARG STAR_RELEASE_VERSION=unversioned
+ARG STAR_BUILD_GIT_SHA=unknown
+ARG DINOV2_REVISION=ed25f3a31f01632728cabb09d1542f84ab7b0056
+LABEL org.opencontainers.image.version="$STAR_RELEASE_VERSION" \
+    org.opencontainers.image.revision="$STAR_BUILD_GIT_SHA"
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    HF_HUB_OFFLINE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN pip install --no-cache-dir \
+      "torch @ https://download-r2.pytorch.org/whl/cpu/torch-2.8.0%2Bcpu-cp311-cp311-manylinux_2_28_x86_64.whl#sha256=cb06175284673a581dd91fb1965662ae4ecaba6e5c357aa0ea7bb8b84b6b7eeb" \
+      fastapi==0.116.1 \
+      huggingface-hub==0.34.4 \
+      pillow==11.3.0 \
+      safetensors==0.6.2 \
+      transformers==4.55.4 \
+      uvicorn==0.35.0 \
+    && TRANSFORMERS_OFFLINE=0 HF_HUB_OFFLINE=0 python -c \
+      "from huggingface_hub import snapshot_download; p=['*.json','*.safetensors','*.txt','*.model']; snapshot_download('facebook/dinov2-small',revision='${DINOV2_REVISION}',local_dir='/opt/models/dinov2-small',allow_patterns=p)" \
+    && find /opt/models -type d -name .cache -prune -exec rm -rf {} + \
+    && rm -rf /root/.cache/huggingface \
+    && useradd --uid 10001 --create-home --shell /usr/sbin/nologin star
+
+WORKDIR /app
+COPY --chown=10001:10001 EmbeddingRuntime/app.py /app/app.py
+USER 10001:10001
+EXPOSE 8095
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8095/healthz', timeout=3).read()"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8095", "--workers", "1", "--no-access-log"]

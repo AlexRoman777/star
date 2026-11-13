@@ -1,0 +1,96 @@
+packages:
+  - .
+
+overrides:
+  "browserslist": "4.28.7"
+  "brace-expansion@1": "1.1.18"
+  "brace-expansion@5": "5.0.9"
+  "nanoid@3": "3.3.18"
+  "postcss@8": "8.5.23"
+
+# New versions wait seven days before they can enter a fresh resolution. The
+# committed lockfile still pins every accepted byte for reproducible builds.
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+# Bootstrap exception, 18 July 2026: these exact releases were already locked,
+# built, tested, and reviewed during the npm-to-pnpm migration. The exception
+# does not match any later version.
+minimumReleaseAgeExclude:
+  - "@eslint/js@10.0.1"
+  - "@tanstack/react-query@5.102.0"
+  - "@tanstack/query-core@5.102.0"
+  - "@testing-library/jest-dom@7.0.1"
+  - "@types/node@26.2.0"
+  - "@vitejs/plugin-react@6.1.0"
+  - "eslint-plugin-react-hooks@7.1.1"
+  - "eslint-plugin-react-refresh@0.5.4"
+  - "eslint@10.8.1"
+  - "eslint@10.9.0"
+  - "fallow@3.17.0"
+  - "@fallow-cli/darwin-arm64@3.17.0"
+  - "@fallow-cli/darwin-x64@3.17.0"
+  - "@fallow-cli/linux-arm64-gnu@3.17.0"
+  - "@fallow-cli/linux-arm64-musl@3.17.0"
+  - "@fallow-cli/linux-x64-gnu@3.17.0"
+  - "@fallow-cli/linux-x64-musl@3.17.0"
+  - "@fallow-cli/win32-arm64-msvc@3.17.0"
+  - "@fallow-cli/win32-x64-msvc@3.17.0"
+  - "fallow-type-aware@3.17.0"
+  - "globals@17.11.0"
+  - "jsdom@30.0.1"
+  - "typescript@7.0.2"
+  - "typescript@6.0.3"
+  - "vite@8.2.2"
+  - "@vitest/coverage-istanbul@4.1.10"
+  - "brace-expansion@5.0.8"
+  - "brace-expansion@1.1.18"
+  - "brace-expansion@5.0.9"
+  - "js-yaml@4.3.1"
+  - "nanoid@3.3.18"
+  - "postcss@8.5.23"
+  - "@fallow-cli/darwin-arm64@3.5.1"
+  - "@fallow-cli/darwin-x64@3.5.1"
+  - "@fallow-cli/linux-arm64-gnu@3.5.1"
+  - "@fallow-cli/linux-arm64-musl@3.5.1"
+  - "@fallow-cli/linux-x64-gnu@3.5.1"
+  - "@fallow-cli/linux-x64-musl@3.5.1"
+  - "@fallow-cli/win32-arm64-msvc@3.5.1"
+  - "@fallow-cli/win32-x64-msvc@3.5.1"
+  - "@typescript-eslint/eslint-plugin@8.64.0"
+  - "@typescript-eslint/parser@8.64.0"
+  - "@typescript-eslint/project-service@8.64.0"
+  - "@typescript-eslint/scope-manager@8.64.0"
+  - "@typescript-eslint/tsconfig-utils@8.64.0"
+  - "@typescript-eslint/type-utils@8.64.0"
+  - "@typescript-eslint/types@8.64.0"
+  - "@typescript-eslint/typescript-estree@8.64.0"
+  - "@typescript-eslint/utils@8.64.0"
+  - "@typescript-eslint/visitor-keys@8.64.0"
+  - "fallow@3.5.1"
+  - "postcss@8.5.19"
+  - "typescript-eslint@8.64.0"
+  - "vite@8.1.5"
+
+# A recent dependency may not silently lose registry provenance compared with
+# an earlier release. Very old packages predate provenance and are covered by
+# lockfile integrity, SCA, and the age gate instead.
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 43200
+trustLockfile: false
+
+blockExoticSubdeps: true
+strictDepBuilds: true
+verifyDepsBeforeRun: error
+saveExact: true
+engineStrict: true
+nodeVersion: 24.18.0
+
+# Dependency lifecycle scripts are denied unless a package and reason are
+# explicitly reviewed here.
+allowBuilds:
+  fsevents: false
+
+auditConfig:
+  ignoreGhsas:
+    - GHSA-qwww-vcr4-c8h2
