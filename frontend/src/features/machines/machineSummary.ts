@@ -92,17 +92,17 @@ export function shortModelName(model: string | null): string {
 
 export interface MachineRelease { label: string; tone: "current" | "behind" | "mixed" | "unknown"; detail: string }
 
-/** One release label per machine: the agents' package versions against the NAS release. */
+/** One release label per machine: the agents' package versions against the coordinator release. */
 export function machineRelease(machine: MachineGroup): MachineRelease {
   const versions = [...new Set(machine.workers.map((worker) => worker.release_version || "unversioned"))];
   const expected = machine.workers.find((worker) => worker.expected_release_version)?.expected_release_version ?? null;
   const updateNeeded = machine.workers.some((worker) => worker.update_available);
-  if (versions.length > 1) return { label: versions.join(" / "), tone: "mixed", detail: `Agents run different packages; the NAS is ${expected ?? "unknown"}` };
+  if (versions.length > 1) return { label: versions.join(" / "), tone: "mixed", detail: `Agents run different packages; the coordinator is ${expected ?? "unknown"}` };
   const version = versions[0] ?? "unversioned";
   if (version === "unversioned") return { label: "unversioned", tone: "unknown", detail: "No package version reported yet" };
-  if (updateNeeded) return { label: version, tone: "behind", detail: `Update required · NAS is ${expected ?? "unknown"}` };
-  if (expected && expected !== version) return { label: version, tone: "behind", detail: `Older but compatible · NAS is ${expected}` };
-  return { label: version, tone: "current", detail: expected ? `Matches the NAS (${expected})` : "Package version" };
+  if (updateNeeded) return { label: version, tone: "behind", detail: `Update required · coordinator is ${expected ?? "unknown"}` };
+  if (expected && expected !== version) return { label: version, tone: "behind", detail: `Older but compatible · coordinator is ${expected}` };
+  return { label: version, tone: "current", detail: expected ? `Matches the coordinator (${expected})` : "Package version" };
 }
 
 /** Photos a model actually reviewed, per hour.

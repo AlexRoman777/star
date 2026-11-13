@@ -360,7 +360,7 @@ function normalizedSchedule(schedule: Worker["schedule_policy"]): WorkerSchedule
 
 function WorkerCard({ worker }: { worker: Worker }) {
   const queryClient = useQueryClient();
-  // The audited NAS policy is authoritative after a worker refresh.
+  // The audited coordinator policy is authoritative after a worker refresh.
   const [schedule, setSchedule] = useServerDraft(
     normalizedSchedule(worker.schedule_policy),
     worker.schedule_policy,

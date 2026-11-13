@@ -1,13 +1,13 @@
 #!/bin/sh
-# A local PostgreSQL that is an exact copy of the NAS database.
+# A local PostgreSQL that is an exact copy of the coordinator database.
 #
-#   scripts/star-db-local.sh restore ~/Private/star-db/star-20260916T030000Z.dump
+#   scripts/star-db-local.sh restore private/database/star-20260916T030000Z.dump
 #   scripts/star-db-local.sh psql            # interactive psql on the copy
 #   scripts/star-db-local.sh psql -c 'SELECT count(*) FROM tasks'
 #   scripts/star-db-local.sh url             # STAR_DATABASE_URL for local runs
 #   scripts/star-db-local.sh stop | start | destroy
 #
-# Same image as the NAS (pgvector, PostgreSQL 18, pg_stat_statements), a
+# Same image as the coordinator (pgvector, PostgreSQL 18, pg_stat_statements), a
 # persistent volume so the copy survives restarts, bound to 127.0.0.1 only.
 # The dump holds private family-photo metadata: keep it under an ignored
 # directory and never publish the port.

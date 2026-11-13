@@ -22,14 +22,14 @@ from star.services.task_recovery import (
 )
 
 
-async def test_nas_restart_reaps_an_abandoned_lease_once(session) -> None:
+async def test_coordinator_restart_reaps_an_abandoned_lease_once(session) -> None:
     task = Task(
         task_type="asset.primary_review",
         routing_key="small-vlm",
         data_class="family-preview",
         target_ref={},
         requirements={},
-        idempotency_key="v108-nas-restart",
+        idempotency_key="v108-coordinator-restart",
         state=TaskState.RUNNING,
         attempt_count=1,
         max_attempts=3,
@@ -127,7 +127,7 @@ async def test_response_replay_rejects_a_different_result_for_the_same_lease(ses
 
 
 async def test_response_loss_retries_submission_without_recomputing(monkeypatch) -> None:
-    request = httpx.Request("POST", "http://nas/api/v1/workers/tasks/x/complete")
+    request = httpx.Request("POST", "http://coordinator/api/v1/workers/tasks/x/complete")
     client = SimpleNamespace(
         post=AsyncMock(
             side_effect=[

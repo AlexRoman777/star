@@ -58,7 +58,7 @@ describe("metrics model", () => {
   });
 
   it("uses bounded and repeatable device envelopes", () => {
-    expect(estimatePowerRange("nas", -1)).toEqual({ lowWatts: 12, highWatts: 25 });
+    expect(estimatePowerRange("coordinator", -1)).toEqual({ lowWatts: 12, highWatts: 25 });
     expect(estimatePowerRange("nvidia", 1)).toEqual({ lowWatts: 180, highWatts: 360 });
     expect(estimateFleetPower(0, [])).toEqual({ lowWatts: 12, highWatts: 25 });
   });

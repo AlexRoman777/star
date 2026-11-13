@@ -17,7 +17,7 @@ RUN --mount=type=cache,id=star-standalone-worker-uv,target=/root/.cache/uv,shari
     && /app/.venv/bin/star-agent validate-contracts
 
 FROM python:3.14.6-slim-trixie@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6
-# checkov:skip=CKV_DOCKER_2:This outbound worker has no HTTP health endpoint; authenticated NAS heartbeats are the health contract and PID 1 exit is handled by Docker restart policy.
+# checkov:skip=CKV_DOCKER_2:This outbound worker has no HTTP health endpoint; authenticated coordinator heartbeats are the health contract and PID 1 exit is handled by Docker restart policy.
 ARG STAR_RELEASE_VERSION=unversioned
 ARG STAR_BUILD_GIT_SHA=unknown
 LABEL org.opencontainers.image.version="$STAR_RELEASE_VERSION" \

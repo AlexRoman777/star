@@ -29,7 +29,7 @@ trivy fs . --scanners vuln,misconfig --severity HIGH,CRITICAL --skip-dirs node_m
 
 ## Rules that will not bend
 
-`AGENTS.md` is the full rulebook. The ones that decide whether a change can be merged:
+These decide whether a change can be merged:
 
 - **No delete capability**, anywhere, for any reason.
 - **Every automated rating is a proposal.** The owner's rating wins.

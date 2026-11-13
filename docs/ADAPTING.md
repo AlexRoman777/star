@@ -64,5 +64,5 @@ the Compose files directly as `docs/SETUP.md` shows.
 The single source of truth for the pipeline is `backend/src/star/services/pipeline_contract.py`.
 Coordinator and workers both import it, and they refuse to work together when their contract
 hashes differ. The rule that decides a worker's family is `machine_kind_of` in
-`backend/src/star/services/model_slots.py`. Start there, run `scripts/verify.sh`, and read
-`AGENTS.md` for the invariants the tests will hold you to.
+`backend/src/star/services/model_slots.py`. Start there and run `scripts/verify.sh`; the tests in
+`backend/tests/safety` hold the invariants.

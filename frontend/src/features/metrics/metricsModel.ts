@@ -1,7 +1,7 @@
 import type { Worker } from "../../api/types";
 import { loadNumber } from "../system/runtimeMetrics";
 
-export type DeviceKind = "nas" | "nvidia" | "apple" | "worker";
+export type DeviceKind = "coordinator" | "nvidia" | "apple" | "worker";
 
 export interface PowerRange {
   lowWatts: number;
@@ -11,7 +11,7 @@ export interface PowerRange {
 export interface MetricMachine {
   key: string;
   label: string;
-  kind: Exclude<DeviceKind, "nas">;
+  kind: Exclude<DeviceKind, "coordinator">;
   workers: Worker[];
   online: boolean;
   cpuLimit: number | null;
@@ -45,7 +45,7 @@ export interface MetricMachine {
 export const POWER_ESTIMATE_VERSION = "generic-device-envelope-v1";
 
 const POWER_PROFILES: Record<DeviceKind, { idle: PowerRange; active: PowerRange }> = {
-  nas: { idle: { lowWatts: 12, highWatts: 25 }, active: { lowWatts: 35, highWatts: 75 } },
+  coordinator: { idle: { lowWatts: 12, highWatts: 25 }, active: { lowWatts: 35, highWatts: 75 } },
   nvidia: { idle: { lowWatts: 40, highWatts: 80 }, active: { lowWatts: 180, highWatts: 360 } },
   apple: { idle: { lowWatts: 5, highWatts: 15 }, active: { lowWatts: 30, highWatts: 110 } },
   worker: { idle: { lowWatts: 10, highWatts: 25 }, active: { lowWatts: 40, highWatts: 120 } },
@@ -163,7 +163,7 @@ export function estimatePowerRange(kind: DeviceKind, utilization: number): Power
   };
 }
 
-export function estimateFleetPower(nasUtilization: number, machines: MetricMachine[]): PowerRange {
-  const ranges = [estimatePowerRange("nas", nasUtilization), ...machines.filter((machine) => machine.online).map((machine) => estimatePowerRange(machine.kind, machine.utilization))];
+export function estimateFleetPower(coordinatorUtilization: number, machines: MetricMachine[]): PowerRange {
+  const ranges = [estimatePowerRange("coordinator", coordinatorUtilization), ...machines.filter((machine) => machine.online).map((machine) => estimatePowerRange(machine.kind, machine.utilization))];
   return ranges.reduce((total, range) => ({ lowWatts: total.lowWatts + range.lowWatts, highWatts: total.highWatts + range.highWatts }), { lowWatts: 0, highWatts: 0 });
 }

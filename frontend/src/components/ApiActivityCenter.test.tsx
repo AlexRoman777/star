@@ -25,7 +25,7 @@ describe("API activity diagnostics", () => {
     act(() => window.dispatchEvent(new CustomEvent(API_ACTIVITY_EVENT, { detail: activity })));
 
     expect(screen.getByText("Refresh failed")).toBeInTheDocument();
-    expect(screen.getByText(/NAS API could not complete this request \(TimeoutError\)/)).toBeInTheDocument();
+    expect(screen.getByText(/coordinator API could not complete this request \(TimeoutError\)/)).toBeInTheDocument();
     expect(screen.getByText("GET /api/v1/dashboard · HTTP 500 · TimeoutError · 5 automatic retries exhausted")).toBeInTheDocument();
     expect(screen.getByText("Request 4b8acbe2-d298-4cb4-9a0b-2e2671251f2b")).toBeInTheDocument();
     vi.useRealTimers();

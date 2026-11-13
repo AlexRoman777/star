@@ -198,8 +198,8 @@ def pressure_decision(
         if immich_wait >= 800.0:
             reasons.append("immich_p95")
         # Host CPU and Linux memory occupancy are advisory. They include
-        # Star itself, PostgreSQL page cache, Immich, and every other NAS
-        # service, so they cannot prove that the host is distressed. Only a
+        # Star itself, PostgreSQL page cache, Immich, and every other
+        # service on the host, so they cannot prove that the host is distressed. Only a
         # control-plane symptom or high-memory swap corroboration may drive
         # full admission backoff.
         hard_reasons = {
@@ -228,7 +228,7 @@ def pressure_decision(
                         _STATE.recovered_samples = 0
                 elif _STATE.level == 0:
                     _STATE.soft_pressure_samples += 1
-                    # Ten consecutive samples (30 seconds in the NAS Compose
+                    # Ten consecutive samples (30 seconds in the coordinator Compose
                     # profile) may reduce admission, but never stop it.
                     if _STATE.soft_pressure_samples >= 10:
                         _STATE.level = 1

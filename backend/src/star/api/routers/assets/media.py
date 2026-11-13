@@ -54,7 +54,7 @@ class _HotDerivative:
 # Derivatives are content-addressed and bound to one asset revision, so a short
 # in-process memo is safe: a changed revision changes the visual version, which
 # the gallery sends as ``?v=`` and which is checked before serving. Eviction on
-# the NAS is caught by the size check and falls back to the database path.
+# the coordinator is caught by the size check and falls back to the database path.
 HOT_DERIVATIVE_TTL_SECONDS = 600
 HOT_DERIVATIVE_LIMIT = 8192
 _hot_derivatives: OrderedDict[tuple[uuid.UUID, str], _HotDerivative] = OrderedDict()

@@ -40,7 +40,7 @@ export function taskErrorExplanation(task: Task): { title: string; detail: strin
       detail: task.task_type === "asset.apple_vision"
         ? "A retired Apple Vision task hit a coordinator HTTP error before it was retired. Recovery reconciles it; nothing else to do."
         : "The worker reached the coordinator, but a task heartbeat, media request, or result submission failed or was rejected.",
-      action: "Confirm NAS and worker releases match, inspect Activity for the HTTP status, then retry this stage.",
+      action: "Confirm coordinator and worker releases match, inspect Activity for the HTTP status, then retry this stage.",
     },
     LocalInferenceTransportError: {
       title: "Model runtime did not answer",

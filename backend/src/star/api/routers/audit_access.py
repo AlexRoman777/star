@@ -272,7 +272,7 @@ async def audit_resource_pressure(
         current = observed
     return {
         **current,
-        "measurement_scope": "whole_nas_host",
+        "measurement_scope": "whole_coordinator_host",
         "star_container_cpu_budget": settings.nas_star_cpu_budget,
         "star_container_memory_budget_bytes": (settings.nas_star_memory_budget_bytes),
         "history": history if include_history else [],

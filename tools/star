@@ -2,14 +2,15 @@
 # Star release tool: build, deploy, status. Nothing else.
 #
 #   tools/star build vX.Y.Z                 bump the version, run scripts/verify.sh, build the wheel
-#                                        and the two NAS images (about 40 s)
+#                                        and the two coordinator images (about 40 s)
 #   tools/star deploy [workers|nvidia|apple] [--apply] [--action update|logs|restart|stop|start]
 #                                        update the workers from the built package; dry run
 #                                        without --apply
-#   tools/star status                    artifacts, NAS release, both machines
+#   tools/star status                    artifacts, coordinator release, both machines
 #
-# The NAS has no SSH: after `build`, import Deployment/coordinator/*.tar.gz in the NAS's Docker UI and redeploy the
-# project from Deployment/coordinator/compose.yaml, then run `deploy --apply`.
+# The coordinator is installed by hand: after `build`, load Deployment/coordinator/*.tar.gz on the coordinator
+# host (`docker load`, or a Docker UI's import) and start Deployment/coordinator/compose.yaml, then run
+# `deploy --apply`. Every address below is an example; set the STAR_* variables for your machines.
 set -eu
 
 SOURCE=$0
@@ -24,7 +25,9 @@ cd "$ROOT"
 NVIDIA_SSH=${STAR_NVIDIA_SSH:-user@192.168.0.20}
 NVIDIA_DIR=${STAR_NVIDIA_DIR:-/opt/star/Deployment/worker-nvidia}
 NVIDIA_KEY=${STAR_NVIDIA_SSH_KEY:-$HOME/.ssh/star}
-NAS_URL=${STAR_NAS_URL:-http://192.168.0.10:3822}
+COORDINATOR_URL=${STAR_COORDINATOR_URL:-http://127.0.0.1:3822}
+# The coordinator images are built for this platform; use linux/arm64 for an ARM coordinator host.
+COORDINATOR_PLATFORM=${STAR_COORDINATOR_PLATFORM:-linux/amd64}
 SSH_OPTS="-o IdentitiesOnly=yes -i $NVIDIA_KEY -o BatchMode=yes -o ConnectTimeout=10 -o ControlMaster=auto -o ControlPersist=60 -o ControlPath=/tmp/star-ssh-%C"
 
 fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
@@ -98,20 +101,20 @@ build_command() {
   rm -rf "$wheel_dir"
   say "Worker package: $(basename "$wheel")"
 
-  # NAS images, built for the NAS platform and saved as importable archives.
+  # Coordinator images, built for the coordinator's platform and saved as importable archives.
   destination="$ROOT/Deployment/coordinator"
-  rm -f "$destination"/star-*-nas-*.tar.gz
+  rm -f "$destination"/star-*-v*.tar.gz
   for image in api web; do
     case "$image" in api) dockerfile=backend/Dockerfile ;; web) dockerfile=frontend/Dockerfile ;; esac
-    docker buildx build --platform linux/amd64 --file "$dockerfile" \
+    docker buildx build --platform "$COORDINATOR_PLATFORM" --file "$dockerfile" \
       --tag "star/$image:$release" \
       --build-arg "STAR_RELEASE_VERSION=$release" --build-arg "STAR_BUILD_GIT_SHA=$git_sha" \
-      --output "type=docker,dest=$destination/star-$image-nas-$release.tar" . >/dev/null 2>&1 \
+      --output "type=docker,dest=$destination/star-$image-$release.tar" . >/dev/null 2>&1 \
       || fail "docker build of star/$image failed (rerun without >/dev/null to see why)"
-    gzip -f "$destination/star-$image-nas-$release.tar"
+    gzip -f "$destination/star-$image-$release.tar"
   done
-  say "NAS images: Deployment/coordinator/star-{api,web}-nas-$release.tar.gz"
-  say "Next: import both archives in the NAS's Docker UI, redeploy the star project from Deployment/coordinator/compose.yaml, then run: tools/star deploy --apply"
+  say "Coordinator images ($COORDINATOR_PLATFORM): Deployment/coordinator/star-{api,web}-$release.tar.gz"
+  say "Next: load both archives on the coordinator host, start Deployment/coordinator/compose.yaml there, then run: tools/star deploy --apply"
 }
 
 # ---------------------------------------------------------------- deploy
@@ -151,14 +154,14 @@ deploy_nvidia() {
 }
 
 wait_for_workers() {
-  # The workers prove themselves by heartbeating the new release to the NAS.
+  # The workers prove themselves by heartbeating the new release to the coordinator.
   release=$(current_release)
   token=$(sed -n 's/^STAR_AGENT_DIAGNOSTICS_TOKEN=//p' "$ROOT/.env.agent" 2>/dev/null | head -1)
   [ -n "$token" ] || { say "No .env.agent token; skipping the heartbeat check. Look at Machines in the UI."; return 0; }
   deadline=$(( $(date +%s) + 240 ))
   while :; do
     seen=$(curl --silent --max-time 5 -H "Authorization: Bearer $token" -H "X-Star-Edge: star-edge" \
-      "$NAS_URL/api/v1/agent/diagnostics" \
+      "$COORDINATOR_URL/api/v1/agent/diagnostics" \
       | python3 -c 'import json,sys
 d=json.load(sys.stdin); want=sys.argv[1]
 rows=(d.get("workers") or {}).get("items") or []
@@ -185,7 +188,7 @@ deploy_command() {
   case "$action" in update|logs|restart|stop|start) ;; *) fail "unknown action: $action" ;; esac
   [ "$APPLY" -eq 1 ] || say "Dry run; add --apply to execute:"
   if [ "$action" = update ] && [ "$APPLY" -eq 1 ]; then
-    curl --fail --silent --max-time 5 "$NAS_URL/api/v1/health/ready" >/dev/null || fail "NAS is not ready at $NAS_URL; install the NAS bundle first"
+    curl --fail --silent --max-time 5 "$COORDINATOR_URL/api/v1/health/ready" >/dev/null || fail "the coordinator is not ready at $COORDINATOR_URL; install the coordinator images first"
   fi
   case "$target" in
     apple) deploy_apple "$action" ;;
@@ -211,19 +214,19 @@ deploy_command() {
 status_command() {
   release=$(current_release)
   say "Release: $release"
-  for file in Deployment/coordinator/star-api-nas-$release.tar.gz Deployment/coordinator/star-web-nas-$release.tar.gz \
+  for file in Deployment/coordinator/star-api-$release.tar.gz Deployment/coordinator/star-web-$release.tar.gz \
               Deployment/worker-nvidia/Package/provenance.env Deployment/worker-apple/Package/provenance.env; do
     if [ -f "$file" ]; then say "  ready    $file"; else say "  missing  $file"; fi
   done
-  if curl --fail --silent --max-time 3 "$NAS_URL/api/v1/health/ready" >/dev/null; then
+  if curl --fail --silent --max-time 3 "$COORDINATOR_URL/api/v1/health/ready" >/dev/null; then
     token=$(sed -n 's/^STAR_AGENT_DIAGNOSTICS_TOKEN=//p' "$ROOT/.env.agent" 2>/dev/null | head -1)
-    nas_release=
-    [ -z "$token" ] || nas_release=$(curl --silent --max-time 5 -H "Authorization: Bearer $token" -H "X-Star-Edge: star-edge" \
-      "$NAS_URL/api/v1/agent/diagnostics" | python3 -c 'import json,sys
+    coordinator_release=
+    [ -z "$token" ] || coordinator_release=$(curl --silent --max-time 5 -H "Authorization: Bearer $token" -H "X-Star-Edge: star-edge" \
+      "$COORDINATOR_URL/api/v1/agent/diagnostics" | python3 -c 'import json,sys
 d=json.load(sys.stdin); print(d.get("release_version") or (d.get("coordinator") or {}).get("release_version") or "")' 2>/dev/null || true)
-    say "NAS: ready at $NAS_URL${nas_release:+ ($nas_release)}"
+    say "Coordinator: ready at $COORDINATOR_URL${coordinator_release:+ ($coordinator_release)}"
   else
-    say "NAS: not ready at $NAS_URL"
+    say "Coordinator: not ready at $COORDINATOR_URL"
   fi
   if [ -f "$ROOT/Deployment/worker-apple/.env" ]; then
     running=$(docker compose --env-file "$ROOT/Deployment/worker-apple/.env" -f "$ROOT/Deployment/worker-apple/compose.yaml" ps --services --status running 2>/dev/null | wc -l | tr -d ' ')

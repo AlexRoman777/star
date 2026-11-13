@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     build_source_fingerprint: str = Field(default="unknown", pattern=r"^(?:unknown|[0-9a-f]{64})$")
     minimum_worker_protocol_version: int = Field(default=2, ge=1, le=100)
     maximum_worker_protocol_version: int = Field(default=2, ge=1, le=100)
-    # Worker packages may intentionally outlive a NAS/web release. The numeric
+    # Worker packages may intentionally outlive a coordinator release. The numeric
     # worker protocol, routes, and runtime contract are the compatibility gate.
     require_matching_worker_release: bool = False
     public_origin: str = "http://localhost:5173"

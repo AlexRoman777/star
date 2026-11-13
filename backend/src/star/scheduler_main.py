@@ -534,7 +534,7 @@ async def _run_resilient_loop(
             # A large active library can keep returning work indefinitely. Yield a
             # small bounded interval between successful passes so task scheduling,
             # worker heartbeats, API reads, and PostgreSQL maintenance are not starved
-            # by a coordinator busy loop on modest NAS hardware.
+            # by a coordinator busy loop on modest hardware.
             expected_wakeup = clock() + busy_yield_seconds
             await _bounded_sleep(sleep, busy_yield_seconds)
 
@@ -1059,7 +1059,7 @@ async def run() -> None:
         if removed:
             housekeeping_passes[0] += 1
         # Planner statistics follow bulk change. A copy of the production
-        # database showed a 56 ms query taking nine minutes on the NAS after
+        # database showed a 56 ms query taking nine minutes on the coordinator after
         # a table its plan depended on had never been analysed.
         if removed and housekeeping_passes[0] % 5 == 0:
             async with _housekeeping_session() as session:

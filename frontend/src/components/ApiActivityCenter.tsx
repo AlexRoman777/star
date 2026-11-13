@@ -29,7 +29,7 @@ function failureContext(notice: ActivityNotice): string | null {
 function actionableDetail(notice: ActivityNotice): string {
   if (notice.detail.toLowerCase() !== "internal server error") return notice.detail;
   const cause = notice.errorClass ? ` (${notice.errorClass})` : "";
-  return `The NAS API could not complete this request${cause}. Existing queue and review state remain saved; use the request ID below to find the matching server log.`;
+  return `The coordinator API could not complete this request${cause}. Existing queue and review state remain saved; use the request ID below to find the matching server log.`;
 }
 
 function activityTone(notice: ActivityNotice) {
@@ -104,7 +104,7 @@ export function ApiActivityCenter() {
 
   return (
     <>
-      {showLoading && pendingCount > 0 && <div className="api-loading-indicator" role="status" aria-live="polite"><span className="api-loading-orbit" aria-hidden="true"><i /><i /><i /></span><span><strong>Star is working</strong><small>{pendingCount === 1 ? "Waiting for the NAS" : `${pendingCount} updates in motion`}</small></span></div>}
+      {showLoading && pendingCount > 0 && <div className="api-loading-indicator" role="status" aria-live="polite"><span className="api-loading-orbit" aria-hidden="true"><i /><i /><i /></span><span><strong>Star is working</strong><small>{pendingCount === 1 ? "Waiting for the coordinator" : `${pendingCount} updates in motion`}</small></span></div>}
       {notices.length > 0 && <aside className="api-activity-center" aria-label="Star activity" aria-live="polite">
         {notices.map((notice) => <ActivityNoticeCard notice={notice} onDismiss={(id) => setNotices((current) => current.filter((item) => item.id !== id))} key={notice.id} />)}
       </aside>}

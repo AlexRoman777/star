@@ -1,7 +1,7 @@
 # Star operations
 
-This is the runbook for the reference setup: a NAS coordinator (example address `192.168.0.10`,
-managed through the NAS's Docker UI, no SSH from tools), an NVIDIA GPU worker reached over SSH
+How to release, update and recover a running installation: a coordinator host (example address
+`192.168.0.10`, installed by hand), an NVIDIA GPU worker reached over SSH
 (`ssh -i ~/.ssh/star user@192.168.0.20`, deployment directory `/opt/star/Deployment/worker-nvidia`) and
 a Mac that holds this checkout (`Deployment/worker-apple`). Every address, user and path here is an
 example. Start with `docs/SETUP.md` for a first install, and `docs/ADAPTING.md` if your machines
@@ -10,35 +10,38 @@ differ. Secrets are named here by file only. Never print them.
 ## Release
 
 ```sh
-tools/star build v1.0.1      # a higher version than RELEASE; bumps versions, runs the 25 s gate, builds wheel + NAS images
-# install on the NAS by hand (below), then:
+tools/star build v1.0.1      # a higher version than RELEASE; bumps versions, runs the 25 s gate, builds wheel + coordinator images
+# install the coordinator by hand (below), then:
 tools/star deploy --apply    # NVIDIA over SSH + rsync, Mac locally, in parallel; then checks heartbeats
-tools/star status            # artifacts, NAS release, both machines, native Apple services
+tools/star status            # artifacts, coordinator release, both machines, native Apple services
 ```
 
-Commit before `build`; it refuses a dirty tree. `build` writes `Deployment/coordinator/star-{api,web}-nas-vX.Y.Z.tar.gz`
+Commit before `build`; it refuses a dirty tree. `build` writes `Deployment/coordinator/star-{api,web}-vX.Y.Z.tar.gz`
 and `Deployment/worker-{nvidia,apple}/Package/{star-X.Y.Z-py3-none-any.whl,provenance.env}`.
 `deploy` without `--apply` prints what it would run. `deploy nvidia|apple` deploys one machine;
-`deploy --action logs|restart|stop|start` are the lifecycle actions.
+`deploy --action logs|restart|stop|start` are the lifecycle actions. The tool reads the machines'
+addresses from `STAR_COORDINATOR_URL`, `STAR_NVIDIA_SSH`, `STAR_NVIDIA_DIR` and `STAR_NVIDIA_SSH_KEY`;
+set `STAR_COORDINATOR_PLATFORM=linux/arm64` for an ARM coordinator host.
 
-## NAS install
+## Coordinator install
 
 1. Copy `Deployment/coordinator/compose.yaml` and the two `.tar.gz` files to `/opt/star`
    (the `.env` there is kept; first install: create it from `Deployment/coordinator/.env.example`).
-2. In the NAS's Docker UI, import both image archives as they are. Expect `star/api:vX.Y.Z`, `star/web:vX.Y.Z`.
-3. In the Docker UI, open the `star` project and redeploy from `/opt/star/compose.yaml`
+2. Load both image archives (`docker load --input star-api-vX.Y.Z.tar.gz`, the same for `web`, or
+   your Docker UI's import). Expect `star/api:vX.Y.Z`, `star/web:vX.Y.Z`.
+3. Start the project from `/opt/star` with `docker compose up -d` (or redeploy it in your Docker UI)
    without removing volumes. Expect: `postgres` healthy, `api` healthy after Alembic, `web` on
    `:3822`, `scheduler`, `writeback-worker`, `database-backup`.
 4. `curl --fail http://192.168.0.10:3822/api/v1/health/ready`.
 
-First install only, on the NAS host: create `./star-data/{artifacts,models,starml}`
+First install only, on the coordinator host: create `./star-data/{artifacts,models,starml}`
 owned by `10001:10001` (mode 0750) and `./star-data/postgres` owned by `999:999`
 (mode 0700). First login at `http://192.168.0.10:3822` → First setup → create the owner account. Add the Immich
 connection under Accounts with a least-privilege key (`asset.read asset.view asset.statistics
 album.read person.read face.read duplicate.read tag.read sync.stream syncCheckpoint.update`, plus
 `asset.update tag.create tag.asset` for write-back; never delete, upload, replace, admin or `all`).
 
-Rollback: import the previous `star-*-nas-vX.Y.Z.tar.gz` (keep the last one) and redeploy the
+Rollback: load the previous `star-*-vX.Y.Z.tar.gz` (keep the last one) and redeploy the
 matching `compose.yaml` from git. Never attach the PostgreSQL 18 data directory to an older major.
 
 ## NVIDIA
@@ -101,9 +104,9 @@ launchctl list | grep io.star
 - Reset only through Settings → Accounts (photo library only, or fresh installation). Never
   `docker compose down -v`; never edit the database by hand.
 
-## Local copy of the NAS database
+## Local copy of the coordinator database
 
-The NAS dumps nightly at 03:00 UTC to `./star-data/starml/database/star-<stamp>.dump`
+The coordinator dumps nightly at 03:00 UTC to `./star-data/starml/database/star-<stamp>.dump`
 (+ `.sha256`). Copy the newest dump into `private/database/` (git-ignored) and run
 `scripts/star-db-local.sh restore private/database/star-<stamp>.dump`; it prints
 `STAR_DATABASE_URL` for a loopback PostgreSQL 18 on `127.0.0.1:55432`. Measure every schema or

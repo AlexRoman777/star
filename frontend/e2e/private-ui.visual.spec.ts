@@ -427,8 +427,8 @@ const payloads: Record<string, unknown> = {
   ] } },
   "/api/v1/system/overview": {
     generated_at: "2026-08-23T08:00:00Z",
-    coordinator_name: "synthetic-nas",
-    coordinator_role: "nas-coordinator",
+    coordinator_name: "synthetic-coordinator",
+    coordinator_role: "coordinator",
     environment: "visual-test",
     software_version: "v168",
     release_version: "v168",

@@ -1718,7 +1718,7 @@ async def _process_task_inner(
             execution.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await execution
-            # If renewal failed because the NAS was briefly unreachable, the
+            # If renewal failed because the coordinator was briefly unreachable, the
             # server may still hold the lease. Return it when possible rather
             # than leaving the next poll blocked at capacity until expiry.
             # A genuinely superseded lease is rejected by the server's token check.

@@ -34,7 +34,7 @@ x-star-environment: &star-environment
   STAR_HTTP_PORT: 3822
   STAR_LOG_LEVEL: INFO
   STAR_COORDINATOR_NAME: ${STAR_COORDINATOR_NAME:-star-coordinator}
-  STAR_COORDINATOR_ROLE: nas-coordinator
+  STAR_COORDINATOR_ROLE: coordinator
   # Every name or address people type to reach Star. Requests for any other host are refused.
   STAR_ALLOWED_HOSTS: ${STAR_LAN_ADDRESS:-127.0.0.1},localhost,127.0.0.1,api${STAR_EXTRA_ALLOWED_HOSTS:+,${STAR_EXTRA_ALLOWED_HOSTS}}
   STAR_CORS_ORIGINS: http://${STAR_LAN_ADDRESS:-127.0.0.1}:3822
@@ -306,8 +306,8 @@ services:
 networks:
   # LAN-facing bridge: web publishes 3822; api, scheduler and the writer reach Immich.
   edge:
-    name: star-nas-edge
+    name: star-coordinator-edge
   # PostgreSQL is reachable only from Star's own services.
   data:
-    name: star-nas-data
+    name: star-coordinator-data
     internal: true

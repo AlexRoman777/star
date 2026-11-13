@@ -104,9 +104,7 @@ exposed to the internet.
 |---|---|
 | [docs/SETUP.md](docs/SETUP.md) | Compatible hardware and a first install: coordinator, workers, models, Immich key |
 | [docs/ADAPTING.md](docs/ADAPTING.md) | What you can configure, and what is still fixed in the code |
-| [docs/OPERATIONS.md](docs/OPERATIONS.md) | The maintainer's day-to-day runbook: release, deploy, recover |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Why things are the way they are, one line per decision |
-| [AGENTS.md](AGENTS.md) | The project's rules, written for the coding agents that helped build it |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Building a release, updating the machines, and what to check when something is wrong |
 | [CHANGELOG.md](CHANGELOG.md) | What each release contains, and what was verified |
 
 ## Built with
@@ -114,9 +112,6 @@ exposed to the internet.
 Python 3.14, FastAPI, SQLAlchemy and Alembic on PostgreSQL 18 with pgvector. React, TypeScript
 and Vite for the web UI. Ollama and MLX for local inference, with DINOv2 image embeddings.
 Docker Compose on every machine. About 600 backend tests and 200 frontend tests.
-
-Star was built with AI coding agents under human review. `AGENTS.md` is the rulebook they
-worked from, and `docs/DECISIONS.md` is the record of what was decided and why.
 
 ## Policies
 

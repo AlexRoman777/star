@@ -33,7 +33,7 @@ def create_engine(settings: Settings) -> AsyncEngine:
                 "server_settings": {
                     "application_name": f"star-{settings.coordinator_role}"[:63],
                     # A forgotten read transaction must not pin one of the
-                    # NAS's bounded connections indefinitely. Ordinary route
+                    # coordinator's bounded connections indefinitely. Ordinary route
                     # work commits or rolls back well inside this guard.
                     "idle_in_transaction_session_timeout": "30000",
                 }
