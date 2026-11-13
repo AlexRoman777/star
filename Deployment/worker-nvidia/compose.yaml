@@ -34,7 +34,7 @@ services:
       - --technical-concurrency
       - ${STAR_TECHNICAL_CONCURRENCY:-4}
     environment:
-      STAR_WORKER_RELEASE_VERSION: v272
+      STAR_WORKER_RELEASE_VERSION: v1.0.0
       STAR_ENVIRONMENT: production
       STAR_SEMANTIC_EMBEDDING_URL: http://embedding-runtime:8095
       STAR_EMBEDDING_TOKEN: ${STAR_EMBEDDING_TOKEN:-}
@@ -160,7 +160,7 @@ services:
       - --quiet-hours-performance-percent
       - ${STAR_NVIDIA_QUIET_PERFORMANCE_PERCENT:-100}
     environment:
-      STAR_WORKER_RELEASE_VERSION: v272
+      STAR_WORKER_RELEASE_VERSION: v1.0.0
       STAR_ENVIRONMENT: production
       STAR_HIGHLIGHT_CONTEXT_TOKENS: "4096"
       STAR_HIGHLIGHT_CONTACT_SHEET_EDGE: "1344"

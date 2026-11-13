@@ -162,7 +162,7 @@ This file is the whole rulebook. `docs/OPERATIONS.md` says how to install, deplo
 
 ## Build and release
 
-- One `vNN` per change: `tools/star build vNN` bumps the version, runs the 25-second gate
+- One `vX.Y.Z` per change: `tools/star build vX.Y.Z` bumps the version, runs the 25-second gate
   (`scripts/verify.sh`: ruff, mypy, `pytest -n auto`, frontend lint, tests, build), builds the
   wheel and the two NAS images. The tree must be committed first. Then install `Deployment/coordinator`
   on the NAS by hand (no SSH there) and run `tools/star deploy --apply`. `tools/star status` shows

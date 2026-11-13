@@ -69,7 +69,7 @@ tools/star build "$(cat RELEASE)"
 ```
 
 This runs the verification gate, then writes the coordinator images to
-`Deployment/coordinator/star-{api,web}-nas-vNN.tar.gz` and the worker package to
+`Deployment/coordinator/star-{api,web}-nas-vX.Y.Z.tar.gz` and the worker package to
 `Deployment/worker-nvidia/Package/` and `Deployment/worker-apple/Package/`. The coordinator
 images are built for `linux/amd64`; change the `--platform` value in `tools/star` if your
 coordinator is ARM.
@@ -80,8 +80,8 @@ Copy `Deployment/coordinator/compose.yaml`, its `.env.example` and the two image
 the coordinator. Then:
 
 ```sh
-docker load --input star-api-nas-vNN.tar.gz
-docker load --input star-web-nas-vNN.tar.gz
+docker load --input star-api-nas-vX.Y.Z.tar.gz
+docker load --input star-web-nas-vX.Y.Z.tar.gz
 cp .env.example .env        # then edit it
 ```
 

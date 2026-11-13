@@ -10,14 +10,14 @@ differ. Secrets are named here by file only. Never print them.
 ## Release
 
 ```sh
-tools/star build v260        # next number only; bumps versions, runs the 25 s gate, builds wheel + NAS images
+tools/star build v1.0.1      # a higher version than RELEASE; bumps versions, runs the 25 s gate, builds wheel + NAS images
 # install on the NAS by hand (below), then:
 tools/star deploy --apply    # NVIDIA over SSH + rsync, Mac locally, in parallel; then checks heartbeats
 tools/star status            # artifacts, NAS release, both machines, native Apple services
 ```
 
-Commit before `build`; it refuses a dirty tree. `build` writes `Deployment/coordinator/star-{api,web}-nas-vNN.tar.gz`
-and `Deployment/{NVIDIA,Apple}/Package/{star-NN.0.0-py3-none-any.whl,provenance.env}`.
+Commit before `build`; it refuses a dirty tree. `build` writes `Deployment/coordinator/star-{api,web}-nas-vX.Y.Z.tar.gz`
+and `Deployment/worker-{nvidia,apple}/Package/{star-X.Y.Z-py3-none-any.whl,provenance.env}`.
 `deploy` without `--apply` prints what it would run. `deploy nvidia|apple` deploys one machine;
 `deploy --action logs|restart|stop|start` are the lifecycle actions.
 
@@ -25,7 +25,7 @@ and `Deployment/{NVIDIA,Apple}/Package/{star-NN.0.0-py3-none-any.whl,provenance.
 
 1. Copy `Deployment/coordinator/compose.yaml` and the two `.tar.gz` files to `/opt/star`
    (the `.env` there is kept; first install: create it from `Deployment/coordinator/.env.example`).
-2. In the NAS's Docker UI, import both image archives as they are. Expect `star/api:vNN`, `star/web:vNN`.
+2. In the NAS's Docker UI, import both image archives as they are. Expect `star/api:vX.Y.Z`, `star/web:vX.Y.Z`.
 3. In the Docker UI, open the `star` project and redeploy from `/opt/star/compose.yaml`
    without removing volumes. Expect: `postgres` healthy, `api` healthy after Alembic, `web` on
    `:3822`, `scheduler`, `writeback-worker`, `database-backup`.
@@ -38,7 +38,7 @@ connection under Accounts with a least-privilege key (`asset.read asset.view ass
 album.read person.read face.read duplicate.read tag.read sync.stream syncCheckpoint.update`, plus
 `asset.update tag.create tag.asset` for write-back; never delete, upload, replace, admin or `all`).
 
-Rollback: import the previous `star-*-nas-vNN.tar.gz` (keep the last one) and redeploy the
+Rollback: import the previous `star-*-nas-vX.Y.Z.tar.gz` (keep the last one) and redeploy the
 matching `compose.yaml` from git. Never attach the PostgreSQL 18 data directory to an older major.
 
 ## NVIDIA

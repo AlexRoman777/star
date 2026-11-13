@@ -80,7 +80,7 @@ services:
       - --heavy-task-cooldown-seconds
       - ${STAR_MAC_MODEL_COOLDOWN_SECONDS:-0}
     environment:
-      STAR_WORKER_RELEASE_VERSION: v272
+      STAR_WORKER_RELEASE_VERSION: v1.0.0
       STAR_ENVIRONMENT: production
       STAR_HIGHLIGHT_CONTEXT_TOKENS: "16384"
       STAR_HIGHLIGHT_CONTACT_SHEET_EDGE: "4096"

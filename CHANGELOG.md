@@ -1,14 +1,10 @@
 # Changelog
 
-## Version numbers
+Star follows [semantic versioning](https://semver.org). A change that breaks an existing
+installation raises the first number. The version is in the `RELEASE` file, and the images, the
+workers and the Machines page all report it.
 
-Star has two numbers. The **release version** (`1.0.0`) is the public one: it follows
-[semantic versioning](https://semver.org), and a change that breaks an existing installation
-raises the first number. The **build number** (`v272` in the `RELEASE` file) counts every build
-since the project began. It is what the images, the workers and the Machines page report, and
-`tools/star build` raises it by one each time.
-
-## 1.0.0, build 272 (14 November 2026)
+## 1.0.0 (14 November 2026)
 
 The first public release.
 
@@ -28,6 +24,8 @@ The first public release.
 
 ### What was not verified
 
+- **Version numbers restart here.** Before publication the project counted builds, up to
+  `v272`; `docs/DECISIONS.md` still refers to those.
 - **No worker has been run against this public code yet.** The maintainer's own installation
   runs the private predecessor, which uses different names for the worker families. Expect to
   report problems on a first install.

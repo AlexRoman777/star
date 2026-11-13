@@ -1,7 +1,7 @@
 #!/bin/sh
 # Star release tool: build, deploy, status. Nothing else.
 #
-#   tools/star build vNN                 bump the version, run scripts/verify.sh, build the wheel
+#   tools/star build vX.Y.Z                 bump the version, run scripts/verify.sh, build the wheel
 #                                        and the two NAS images (about 40 s)
 #   tools/star deploy [workers|nvidia|apple] [--apply] [--action update|logs|restart|stop|start]
 #                                        update the workers from the built package; dry run
@@ -38,39 +38,42 @@ bump_release() {
   requested=$1
   current=$(current_release)
   [ "$requested" = "$current" ] && return 1
-  current_number=${current#v}
-  requested_number=${requested#v}
-  [ "$requested_number" -eq $((current_number + 1)) ] \
-    || fail "source is $current; the next release is v$((current_number + 1))"
-  python3 - "$current_number" "$requested_number" <<'EOF'
+  python3 - "${current#v}" "${requested#v}" <<'EOF'
 import re, sys
 from pathlib import Path
 old, new = sys.argv[1], sys.argv[2]
+def parts(value):
+    if not re.fullmatch(r"\d+\.\d+\.\d+", value):
+        raise SystemExit(f"release must look like v1.2.3, not v{value}")
+    return tuple(int(part) for part in value.split("."))
+if parts(new) <= parts(old):
+    raise SystemExit(f"source is v{old}; the next release must be higher than that")
+old_re = re.escape(old)
 def replace(path, pattern, repl, count=1):
     text = Path(path).read_text(encoding="utf-8")
     updated, n = re.subn(pattern, repl, text, count=count, flags=re.M)
     if n != count:
         raise SystemExit(f"{path}: expected {count} replacement(s), made {n}")
     Path(path).write_text(updated, encoding="utf-8")
-replace("pyproject.toml", rf'^version = "{old}\.0\.0"$', f'version = "{new}.0.0"')
-replace("uv.lock", rf'(\[\[package\]\]\nname = "star"\nversion = "){old}\.0\.0(")', rf'\g<1>{new}.0.0\g<2>')
-replace("frontend/package.json", rf'"version": "{old}\.0\.0"', f'"version": "{new}.0.0"')
-replace("RELEASE", rf'^v{old}$', f"v{new}")
+replace("pyproject.toml", rf'^version = "{old_re}"$', f'version = "{new}"')
+replace("uv.lock", rf'(\[\[package\]\]\nname = "star"\nversion = "){old_re}(")', rf'\g<1>{new}\g<2>')
+replace("frontend/package.json", rf'"version": "{old_re}"', f'"version": "{new}"')
+replace("RELEASE", rf'^v{old_re}$', f"v{new}")
 # Anchored to the keys they mean. A bare version token also matched prose, so
 # the Apple worker's comment absorbed three bumps while the worker kept reporting the
 # release before them.
-replace("Deployment/coordinator/compose.yaml", rf'^  STAR_IMAGE_TAG: v{old}$', f"  STAR_IMAGE_TAG: v{new}")
-replace("Deployment/coordinator/compose.yaml", rf'^(    image: star/(?:api|web):)v{old}$', rf'\g<1>v{new}', 4)
-replace("Deployment/worker-nvidia/compose.yaml", rf'^(      STAR_WORKER_RELEASE_VERSION: )v{old}$', rf'\g<1>v{new}', 2)
-replace("Deployment/worker-apple/compose.yaml", rf'^(      STAR_WORKER_RELEASE_VERSION: )v{old}$', rf'\g<1>v{new}')
+replace("Deployment/coordinator/compose.yaml", rf'^  STAR_IMAGE_TAG: v{old_re}$', f"  STAR_IMAGE_TAG: v{new}")
+replace("Deployment/coordinator/compose.yaml", rf'^(    image: star/(?:api|web):)v{old_re}$', rf'\g<1>v{new}', 4)
+replace("Deployment/worker-nvidia/compose.yaml", rf'^(      STAR_WORKER_RELEASE_VERSION: )v{old_re}$', rf'\g<1>v{new}', 2)
+replace("Deployment/worker-apple/compose.yaml", rf'^(      STAR_WORKER_RELEASE_VERSION: )v{old_re}$', rf'\g<1>v{new}')
 EOF
   say "Release metadata: $requested"
 }
 
 build_command() {
   release=${1:-}
-  [ -n "$release" ] || fail "usage: star build vNN"
-  case "$release" in v[0-9]*) ;; *) fail "release must look like v66" ;; esac
+  [ -n "$release" ] || fail "usage: star build vX.Y.Z"
+  case "$release" in v[0-9]*.[0-9]*.[0-9]*) ;; *) fail "release must look like v1.2.3" ;; esac
   dirty=$(git status --porcelain --untracked-files=no)
   [ -z "$dirty" ] || { printf '%s\n' "$dirty" >&2; fail "commit your changes first; a build must come from a committed tree"; }
   if bump_release "$release"; then
