@@ -83,6 +83,7 @@ async def ensure_collection_context_snapshot(
     )
     if existing is not None:
         return existing
+    # nosemgrep: len-all-count -- a small per-asset list, not a table scan
     face_count = len(
         (
             await session.scalars(

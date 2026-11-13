@@ -44,6 +44,20 @@ jobs:
             --skip-path node_modules --skip-path .venv --skip-path frontend/node_modules \
             --compact --quiet
 
+  static-analysis:
+    name: Static analysis (semgrep)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check semgrep==1.185.0
+      - name: Scan
+        # Reads the code for insecure patterns. Exceptions are written next to the line they
+        # cover, with the reason, or in .semgrepignore.
+        run: semgrep scan --config p/default --metrics off --error --quiet
+
   dependencies:
     name: Dependencies (trivy)
     runs-on: ubuntu-24.04

@@ -1,0 +1,16 @@
+# Database migrations run fixed DDL built from constants in the same file. They take no
+# input, so the SQL-injection rules do not apply to them.
+backend/alembic/versions/
+# Generated and vendored material.
+frontend/src/api/generated/
+backend/tests/fixtures/
+node_modules/
+frontend/node_modules/
+.venv/
+uv.lock
+frontend/pnpm-lock.yaml
+# Tests build requests, SQL and HTML on purpose, from synthetic data.
+backend/tests/
+frontend/e2e/
+*.test.ts
+*.test.tsx

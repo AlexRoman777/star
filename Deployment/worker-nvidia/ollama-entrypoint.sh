@@ -21,6 +21,7 @@ until OLLAMA_HOST=127.0.0.1:11434 ollama list >/dev/null 2>&1; do
 done
 
 old_ifs=$IFS
+# nosemgrep: ifs-tampering -- saved and restored around one split
 IFS=,
 for model in $models; do
   model=$(printf '%s' "$model" | tr -d ' ')
@@ -28,5 +29,6 @@ for model in $models; do
     OLLAMA_HOST=127.0.0.1:11434 ollama pull "$model"
   fi
 done
+# nosemgrep: ifs-tampering -- restores the saved value
 IFS=$old_ifs
 wait "$server_pid"

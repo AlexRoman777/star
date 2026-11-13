@@ -285,6 +285,7 @@ def main() -> int:
                 "Accept": "application/json",
             },
         )
+        # nosemgrep: dynamic-urllib-use-detected -- the URL is validated as HTTP(S) above
         with urlopen(request, timeout=30) as response:  # noqa: S310 - validated HTTP(S)
             value = json.load(response)
         if not isinstance(value, dict):
@@ -298,6 +299,7 @@ def main() -> int:
                 f"{base_url}/api/v1/agent/events/stream",
                 headers={"Authorization": f"Bearer {selected_token}", "Accept": "text/event-stream"},
             )
+            # nosemgrep: dynamic-urllib-use-detected -- the URL is validated as HTTP(S) above
             with urlopen(request, timeout=None) as response:  # noqa: S310
                 for raw in response:
                     line = raw.decode("utf-8", "replace").rstrip("\n")

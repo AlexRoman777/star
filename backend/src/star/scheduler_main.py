@@ -117,6 +117,7 @@ async def _run_background_transaction(
         async with _scheduler_session() as session:
             if session.get_bind().dialect.name == "postgresql":
                 await session.execute(
+                    # nosemgrep: avoid-sqlalchemy-text -- an int computed here, never input
                     text(f"SET LOCAL statement_timeout = {int(budget_seconds * 800)}")
                 )
                 await session.execute(text("SET LOCAL lock_timeout = 1000"))
@@ -346,6 +347,7 @@ async def _run_isolated_library_planner(
         async with asyncio.timeout(budget_seconds), _scheduler_session() as session:
             if session.get_bind().dialect.name == "postgresql":
                 await session.execute(
+                    # nosemgrep: avoid-sqlalchemy-text -- an int computed here, never input
                     text(f"SET LOCAL statement_timeout = {int(budget_seconds * 800)}")
                 )
                 await session.execute(text("SET LOCAL lock_timeout = 1000"))
