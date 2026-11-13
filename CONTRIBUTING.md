@@ -41,6 +41,7 @@ trivy fs . --scanners vuln,misconfig --severity HIGH,CRITICAL --skip-dirs node_m
 
 ## Known issues
 
+- **Security limitations** that are known and not yet fixed are listed in `SECURITY.md`.
 - **Migration drift.** `alembic check` reports 43 differences between the migrations and the
   ORM models on a clean database, mostly check-constraint and index names. Every migration
   applies and the database tests pass, so CI reports the drift without failing. A migration

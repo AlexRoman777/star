@@ -135,6 +135,9 @@ class Settings(BaseSettings):
     worker_credential_grace_hours: int = 24
     worker_auto_enroll_enabled: bool = False
     worker_auto_enroll_require_edge: bool = True
+    # A device key seen for the first time starts paused and receives no work, and so no
+    # photographs, until the owner resumes it on the Machines page.
+    worker_auto_enroll_start_paused: bool = True
     worker_auto_enroll_max_clock_skew_seconds: int = 300
     worker_auto_enroll_cidrs: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
