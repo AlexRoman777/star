@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.19
 
-FROM node:24.18.0-trixie-slim@sha256:ae91dcc111a68c9d2d81ff2a17bda61be126426176fde6fe7d08ab13b7f50573 AS build
+FROM node:26.13.0-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS build
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 WORKDIR /app
@@ -12,7 +12,7 @@ RUN --mount=type=cache,id=star-pnpm,target=/pnpm/store,sharing=locked \
 COPY frontend/ ./
 RUN pnpm run build
 
-FROM nginx:1.30.4-trixie@sha256:5cf90903deda2c5981b8ad05e7617ac010e389f0dde0ac83487c02c509281de6
+FROM nginx:1.31.8-trixie@sha256:165ddde8751e75a1c907d24ef10d9f6deb08b57e0fe56caf67512486aff76d82
 ARG STAR_RELEASE_VERSION=unversioned
 ARG STAR_BUILD_GIT_SHA=unknown
 LABEL org.opencontainers.image.version="$STAR_RELEASE_VERSION" \
