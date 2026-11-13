@@ -1,6 +1,6 @@
 [project]
 name = "star"
-version = "272.0.0"
+version = "1.0.0"
 description = "Local-first photo curation for Immich: local vision models propose star ratings, the owner decides"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"

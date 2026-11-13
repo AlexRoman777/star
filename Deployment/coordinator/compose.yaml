@@ -2,7 +2,7 @@
 # It runs on any always-on Docker host (a NAS, a mini PC, a home server).
 # Secrets and the address of this machine come from the ignored .env next to this file
 # (see .env.example). Without STAR_LAN_ADDRESS the web UI listens on 127.0.0.1 only.
-# `tools/star build vNN` rewrites the four vNN markers below.
+# `tools/star build vX.Y.Z` rewrites the four vX.Y.Z markers below.
 name: star
 
 x-logging: &logging
@@ -24,7 +24,7 @@ x-star-environment: &star-environment
   POSTGRES_DB: star
   POSTGRES_USER: star
   STAR_ENVIRONMENT: production
-  STAR_IMAGE_TAG: v272
+  STAR_IMAGE_TAG: v1.0.0
   STAR_API_WORKERS: 4
   STAR_MINIMUM_WORKER_PROTOCOL_VERSION: 2
   STAR_MAXIMUM_WORKER_PROTOCOL_VERSION: 2
@@ -149,7 +149,7 @@ services:
 
   api:
     <<: *hardened
-    image: star/api:v272
+    image: star/api:v1.0.0
     pull_policy: never
     command:
       - /bin/sh
@@ -183,7 +183,7 @@ services:
 
   scheduler:
     <<: *hardened
-    image: star/api:v272
+    image: star/api:v1.0.0
     pull_policy: never
     command: ["/app/.venv/bin/python", "-m", "star.scheduler_main"]
     stop_grace_period: 45s
@@ -209,7 +209,7 @@ services:
   # The only process that writes approved ratings to Immich. No port, no volume.
   writeback-worker:
     <<: *hardened
-    image: star/api:v272
+    image: star/api:v1.0.0
     pull_policy: never
     command: ["/app/.venv/bin/python", "-m", "star.writeback_main"]
     stop_grace_period: 45s
@@ -231,7 +231,7 @@ services:
 
   web:
     <<: *hardened
-    image: star/web:v272
+    image: star/web:v1.0.0
     pull_policy: never
     stop_grace_period: 30s
     depends_on:
